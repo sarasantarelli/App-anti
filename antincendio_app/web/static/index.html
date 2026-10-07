@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App-anti · Valutazione rischio incendio</title>
+<style>
+:root{--ink:#212121;--muted:#666;--red:#b71c1c;--grey:#f0f0f0;--amber:#fae6c0;--yellow:#fdd835;--ok:#dff0d8;--ko:#f2dede;--line:#d9d9d9;--bg:#fafafa;--card:#fff}
+@media (prefers-color-scheme:dark){:root{--ink:#eee;--muted:#aaa;--grey:#2b2b2b;--amber:#4a3b1c;--ok:#1f3a24;--ko:#472322;--line:#444;--bg:#161616;--card:#202020}}
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 Calibri,Carlito,Segoe UI,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+header{background:#212121;color:#fff;padding:12px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.3px}header small{color:#bbb}
+header .sp{flex:1}.badge{padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700}
+.b-bozza{background:var(--yellow);color:#212121}.b-ok{background:#2e7d32;color:#fff}
+main{max-width:1100px;margin:0 auto;padding:16px}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:3px solid var(--red);margin-bottom:14px}
+nav.tabs button{background:var(--grey);border:0;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer;color:var(--ink);border-radius:4px 4px 0 0}
+nav.tabs button.on{background:var(--red);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:14px}
+h2{color:var(--red);font-size:17px;margin:0 0 10px}h3{font-size:15px;margin:14px 0 6px;color:var(--ink)}
+.drop{border:2px dashed var(--muted);border-radius:8px;padding:30px;text-align:center;cursor:pointer;background:var(--grey)}
+.drop.over{border-color:var(--red);background:var(--amber)}
+button.p{background:var(--red);color:#fff;border:0;padding:9px 18px;border-radius:4px;font:inherit;font-weight:700;cursor:pointer}
+button.s{background:var(--grey);color:var(--ink);border:1px solid var(--line);padding:7px 12px;border-radius:4px;font:inherit;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 16px}
+label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px}
+input[type=text],input[type=number],textarea,select{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:4px;font:inherit;background:var(--card);color:var(--ink)}
+textarea{min-height:60px}.src{font-size:11px;color:var(--muted);margin-top:2px}.src.man{color:#2e7d32}.src.unc{color:#b26a00}
+.pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700;background:var(--grey)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.kpi div{background:var(--grey);padding:10px;border-radius:6px}
+.kpi b{display:block;font-size:20px}.kpi span{font-size:12px;color:var(--muted)}
+.f{padding:8px 10px;border-left:5px solid var(--line);margin:6px 0;background:var(--grey);border-radius:0 4px 4px 0}
+.f.critico{border-color:var(--red);background:var(--ko)}.f.attenzione{border-color:var(--yellow)}.f small{color:var(--muted)}
+table{border-collapse:collapse;width:100%}th{background:#212121;color:#fff;text-align:left;padding:6px 8px;font-size:13px}td{border:1px solid var(--line);padding:5px 7px;vertical-align:top}
+.voce{border:1px solid var(--line);border-radius:6px;padding:9px 11px;margin:7px 0;background:var(--card)}
+.voce.C{background:var(--ok)}.voce.NC{background:var(--ko)}.voce.NA{background:var(--grey)}
+.voce .t{font-size:14px}.btns{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.btns button{padding:5px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:4px;cursor:pointer;font-weight:700}
+.btns button.on.C{background:#2e7d32;color:#fff}.btns button.on.NC{background:var(--red);color:#fff}.btns button.on.NA{background:#666;color:#fff}
+.bar{height:10px;background:var(--grey);border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;background:#2e7d32}
+.hide{display:none}.mut{color:var(--muted)}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.warn{background:var(--amber);padding:10px 12px;border-radius:6px;margin:8px 0}
+a.dl{display:inline-block;margin:4px 8px 4px 0;padding:8px 14px;background:var(--grey);border:1px solid var(--line);border-radius:4px;color:var(--ink);text-decoration:none;font-weight:700}
+a.dl.big{background:var(--red);color:#fff;border-color:var(--red)}
+</style>
+</head>
+<body>
+<header><h1>Valutazione del Rischio Incendio</h1><small>VRI · Piano di Emergenza — D.Lgs. 81/08 artt. 28, 46 · DM 3/8/2015 · DM 2-3/9/2021</small><span class="sp"></span><span id="stato" class="badge hide"></span><button class="s hide" id="nuova">Nuova pratica</button></header>
+<main>
+<section id="home" class="card">
+  <h2>1 · Carica la documentazione del cliente</h2>
+  <p class="mut">DVR, planimetrie, certificati, registri, foto e video del sopralluogo (PDF, Word, Excel, immagini, video). L'elaborazione avviene sul server, <b>senza chiavi API né servizi esterni</b>. Puoi anche partire senza file e inserire i dati a mano.</p>
+  <div id="drop" class="drop">Trascina qui i file oppure clicca per sceglierli<br><small class="mut" id="fl"></small></div>
+  <input id="fi" type="file" multiple class="hide">
+  <p><button class="p" id="go">Avvia analisi</button></p>
+</section>
+<section id="work" class="hide">
+ <nav class="tabs" id="tabs"></nav>
+ <div id="t-esito"></div><div id="t-dati" class="hide"></div><div id="t-sopr" class="hide"></div><div id="t-azioni" class="hide"></div><div id="t-doc" class="hide"></div>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s),E=(t,a={},h='')=>{const e=document.createElement(t);Object.assign(e,a);if(h)e.innerHTML=h;return e};
+let PID=location.hash.slice(1),R=null,SCHEMA=null,files=[],tab='esito';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(path,opt={}){const r=await fetch(path,opt);if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m}catch{}throw new Error(m)}return r.json()}
+$('#drop').onclick=()=>$('#fi').click();
+$('#fi').onchange=e=>{files=[...e.target.files];$('#fl').textContent=files.map(f=>f.name).join(', ')};
+['dragover','dragenter'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.add('over')}));
+['dragleave','drop'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.remove('over')}));
+$('#drop').addEventListener('drop',e=>{files=[...e.dataTransfer.files];$('#fl').textContent=files.map(f=>f.name).join(', ')});
+$('#go').onclick=async()=>{$('#go').disabled=true;$('#go').textContent='Analisi in corso (lettura OCR di foto/video: può richiedere qualche minuto)…';
+ try{const fd=new FormData();files.forEach(f=>fd.append('files',f));const j=await api('/api/pratiche',{method:'POST',body:fd});PID=j.id;location.hash=PID;R=j;await init()}
+ catch(e){alert('Errore: '+e.message)}finally{$('#go').disabled=false;$('#go').textContent='Avvia analisi'}};
+$('#nuova').onclick=()=>{location.hash='';location.reload()};
+async function init(){SCHEMA=SCHEMA||await api('/api/schema');$('#home').classList.add('hide');$('#work').classList.remove('hide');$('#nuova').classList.remove('hide');draw()}
+function setR(j){R=j;head();if(tab==='esito')drawEsito();if(tab==='azioni')drawAzioni()}
+function head(){const s=R.sintesi,b=$('#stato');b.classList.remove('hide','b-ok','b-bozza');b.textContent=s.stato;b.classList.add(s.stato.startsWith('PRONTO')?'b-ok':'b-bozza')}
+function draw(){head();const T=[['esito','Esito'],['dati','Dati'],['sopr','Sopralluogo'],['azioni','Azioni correttive'],['doc','Documenti']];
+ const n=$('#tabs');n.innerHTML='';T.forEach(([k,l])=>{const b=E('button',{textContent:l});b.className=k===tab?'on':'';b.onclick=()=>{tab=k;draw()};n.append(b)});
+ T.forEach(([k])=>$('#t-'+k).classList.toggle('hide',k!==tab));
+ ({esito:drawEsito,dati:drawDati,sopr:drawSopr,azioni:drawAzioni,doc:drawDoc})[tab]()}
+function drawEsito(){const s=R.sintesi,c=s.completezza||{percento:0,voci:0,risposte:0};
+ const q=s.qfd;let h=`<div class="card"><h2>Esito dell'analisi</h2><p><b>${esc(s.ramo)}</b></p><div class="kpi">
+ <div><b>${s.rischio_basso?'BASSO':'NON BASSO'}</b><span>classificazione (DM 2/9/2021)</span></div>
+ <div><b>${esc(s.rvita)}</b><span>Rvita</span></div><div><b>${s.rbeni}</b><span>Rbeni</span></div>
+ <div><b>${s.rambiente?'signif.':'non signif.'}</b><span>Rambiente</span></div>
+ <div><b>${s.qf!=null?Math.round(s.qf):'n.d.'}</b><span>qf MJ/m² · ${esc(s.qf_fonte)}</span></div>
+ <div><b>${s.formazione.livello} (${s.formazione.ore} h)</b><span>formazione addetti</span></div>
+ <div><b>${Math.round(s.occupanti)}</b><span>occupanti</span></div><div><b>${s.soggetta_dpr151?'SÌ':'no'}</b><span>soggetta DPR 151/2011</span></div></div>
+ <h3>Completezza sopralluogo</h3><div class="bar"><i style="width:${c.percento}%"></i></div><small class="mut">${c.risposte}/${c.voci} voci con esito (${c.percento}%)</small></div>`;
+ if(R.domande.length)h+=`<div class="card"><h2>Domande aperte</h2>${R.domande.map(d=>`<div class="f ${d.gravita==='bloccante'?'critico':'attenzione'}">${esc(d.domanda)} <small>(${d.gravita})</small></div>`).join('')}<p><button class="s" onclick="tab='dati';draw()">Completa i dati →</button></p></div>`;
+ const fh=f=>`<div class="f ${f.livello}"><b>${esc(f.agente)}</b> — ${esc(f.messaggio)} ${f.riferimento?`<small>· ${esc(f.riferimento)}</small>`:''}</div>`;
+ const hi=R.findings.filter(f=>f.livello!=='info'),lo=R.findings.filter(f=>f.livello==='info');
+ h+=`<div class="card"><h2>Rilievi degli agenti di controllo</h2>${hi.length?hi.map(fh).join(''):'<span class="mut">Nessun rilievo bloccante.</span>'}${lo.length?`<details><summary class="mut">Note informative (${lo.length})</summary>${lo.map(fh).join('')}</details>`:''}</div>`;
+ h+=`<div class="card"><h2>Documenti letti</h2>${R.evidenze.length?`<table><tr><th>File</th><th>Tipo</th><th>Testo letto</th><th>Nota</th></tr>${R.evidenze.map(e=>`<tr><td>${esc(e.file)}</td><td>${e.tipo}</td><td>${e.caratteri} car.</td><td>${esc(e.nota)}</td></tr>`).join('')}</table>`:'<span class="mut">Nessun file caricato.</span>'}
+ <p><input type="file" id="more" multiple class="hide"><button class="s" onclick="$('#more').click()">Aggiungi altri file</button></p>
+ <p class="mut" style="font-size:13px">Limite dichiarato: senza modello di visione l'app legge i <b>testi</b> (cartelli, targhe, cartellini, planimetrie quotate) ma non riconosce oggetti non scritti: le evidenze da foto/video vanno confermate nel sopralluogo.</p></div>`;
+ $('#t-esito').innerHTML=h;$('#more').onchange=async e=>{const fd=new FormData();[...e.target.files].forEach(f=>fd.append('files',f));try{setR(await api(`/api/pratiche/${PID}/file`,{method:'POST',body:fd}))}catch(x){alert(x.message)}}}
+let dirty={};
+function drawDati(){dirty={};const D=R.dati,g={};SCHEMA.campi.forEach(c=>(g[c.gruppo]=g[c.gruppo]||[]).push(c));
+ let h='<div class="card"><h2>Dati della pratica</h2><p class="mut">Valori letti dai documenti (con fonte) o inseriti da te. Quelli non confermati sono usati in via cautelativa: correggili o confermali. Ogni modifica rilancia l\'analisi.</p></div>';
+ for(const [gr,cs] of Object.entries(g)){h+=`<div class="card"><h2>${esc(gr)}</h2><div class="grid">`;
+  cs.forEach(c=>{const d=D[c.chiave],v=d?d.valore:'';let inp='';
+   if(c.tipo==='bool'||c.tipo==='tri')inp=`<select data-k="${c.chiave}" data-t="${c.tipo}"><option value="">— non indicato —</option><option value="true" ${v===true?'selected':''}>Sì</option><option value="false" ${v===false?'selected':''}>No</option></select>`;
+   else if(c.tipo==='multi')inp=`<select multiple size="5" data-k="${c.chiave}" data-t="multi">${SCHEMA.tipologie.map(t=>`<option ${(v||[]).includes(t)?'selected':''}>${t}</option>`).join('')}</select>`;
+   else if(c.tipo==='area')inp=`<textarea data-k="${c.chiave}" data-t="area">${esc(v)}</textarea>`;
+   else inp=`<input type="${c.tipo==='num'?'number':'text'}" step="any" data-k="${c.chiave}" data-t="${c.tipo}" value="${esc(v)}">`;
+   const fonte=d?`<div class="src ${d.confermato?'man':'unc'}">${d.confermato?'✓ ':'⚠ non confermato · '}${esc(d.fonte)}</div>`:'';
+   h+=`<div style="${c.tipo==='area'?'grid-column:1/-1':''}"><label>${esc(c.label)}</label>${inp}${fonte}${c.aiuto?`<div class="src">${esc(c.aiuto)}</div>`:''}</div>`});
+  h+='</div></div>'}
+ for(const [k,L] of Object.entries(SCHEMA.liste)){const rows=(D[k]&&D[k].valore)||[];
+  h+=`<div class="card"><h2>${esc(L.label)}</h2><table data-l="${k}"><tr>${L.colonne.map(c=>`<th>${esc(c.label)}</th>`).join('')}</tr>${rows.map(r=>rowL(L,r)).join('')}</table><p><button class="s" onclick="addRow('${k}')">+ riga</button></p></div>`}
+ h+='<div class="card"><button class="p" id="save">Salva e rianalizza</button></div>';
+ $('#t-dati').innerHTML=h;$('#t-dati').oninput=e=>{const k=e.target.dataset.k;if(k)dirty[k]=1;else dirty['_liste']=1};$('#t-dati').onchange=$('#t-dati').oninput;
+ $('#save').onclick=saveDati}
+function rowL(L,r={}){return `<tr>${L.colonne.map(c=>c.tipo==='bool'?`<td><input type="checkbox" data-c="${c.chiave}" ${r[c.chiave]?'checked':''}></td>`:`<td><input type="${c.tipo==='num'?'number':'text'}" step="any" data-c="${c.chiave}" value="${esc(r[c.chiave]??'')}"></td>`).join('')}</tr>`}
+function addRow(k){const L=SCHEMA.liste[k];document.querySelector(`table[data-l=${k}]`).insertAdjacentHTML('beforeend',rowL(L));dirty['_liste']=1}
+async function saveDati(){const body={};
+ document.querySelectorAll('#t-dati [data-k]').forEach(el=>{const k=el.dataset.k;if(!dirty[k])return;let v;
+  if(el.multiple)v=[...el.selectedOptions].map(o=>o.value);else if(el.tagName==='SELECT')v=el.value===''?null:el.value==='true';else v=el.value;body[k]=v});
+ if(dirty['_liste'])document.querySelectorAll('#t-dati table[data-l]').forEach(t=>{const L=SCHEMA.liste[t.dataset.l];body[t.dataset.l]=[...t.querySelectorAll('tr')].slice(1).map(tr=>{const r={};tr.querySelectorAll('[data-c]').forEach(i=>r[i.dataset.c]=i.type==='checkbox'?i.checked:i.value);return r})});
+ $('#save').disabled=true;try{setR(await api(`/api/pratiche/${PID}/dati`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));drawDati();alert('Dati salvati: analisi aggiornata.')}catch(e){alert(e.message)}finally{if($('#save'))$('#save').disabled=false}}
+function drawSopr(){const g={};R.voci.forEach(v=>{const k=v.misura||'—';(g[k]=g[k]||[]).push(v)});const c=R.sintesi.completezza||{};
+ let h=`<div class="card"><h2>Scheda di sopralluogo</h2><p class="mut">Le voci sono lette dal template ufficiale. Imposta l'esito (C conforme · NC non conforme · NA non applicabile): le NC generano automaticamente le azioni correttive (VRI-11). Le voci precompilate dai documenti vanno sempre confermate in sito.</p><div class="bar"><i style="width:${c.percento||0}%"></i></div><small class="mut" id="prog">${c.risposte||0}/${c.voci||0} completate</small></div>`;
+ for(const [m,vs] of Object.entries(g)){h+=`<div class="card"><h2>${esc(m)}</h2>`;let gr='';
+  vs.forEach(v=>{if(v.gruppo!==gr){gr=v.gruppo;if(gr)h+=`<h3>${esc(gr)}</h3>`}
+   h+=`<div class="voce ${v.esito||''}" data-id="${v.id}"><div class="t">${esc(v.testo)} ${v.applic&&v.applic!=='Sempre'?`<span class="pill">${esc(v.applic)}</span>`:''}${v.auto?' <span class="pill">auto</span>':''}</div>
+   <div class="btns">${['C','NC','NA'].map(x=>`<button class="${v.esito===x?'on '+x:''}" data-e="${x}">${x==='NA'?'N.A.':x}</button>`).join('')}</div>
+   <textarea placeholder="Dato rilevato (misure, quantità, estremi documenti)" data-n>${esc(v.nota)}</textarea>
+   <input type="text" placeholder="Azione correttiva (se NC)" data-a value="${esc(v.azione)}" class="${v.esito==='NC'?'':'hide'}"></div>`});h+='</div>'}
+ $('#t-sopr').innerHTML=h;
+ $('#t-sopr').querySelectorAll('.voce').forEach(d=>{const id=d.dataset.id;let t;
+  const send=async(es)=>{const body={[id]:{esito:es??(d.querySelector('.btns .on')?.dataset.e||null),nota:d.querySelector('[data-n]').value,azione:d.querySelector('[data-a]').value}};
+   try{setR(await api(`/api/pratiche/${PID}/risposte`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));const c=R.sintesi.completezza;$('#prog').textContent=`${c.risposte}/${c.voci} completate`;document.querySelector('#t-sopr .bar i').style.width=c.percento+'%'}catch(e){alert(e.message)}};
+  d.querySelectorAll('.btns button').forEach(b=>b.onclick=()=>{const was=b.classList.contains('on');d.querySelectorAll('.btns button').forEach(x=>x.className='');const es=was?'':b.dataset.e;if(!was)b.className='on '+es;d.className='voce '+es;d.querySelector('[data-a]').classList.toggle('hide',es!=='NC');send(es||null)});
+  d.querySelectorAll('[data-n],[data-a]').forEach(i=>i.oninput=()=>{clearTimeout(t);t=setTimeout(()=>send(),700)})})}
+function drawAzioni(){const A=R.azioni;$('#t-azioni').innerHTML=`<div class="card"><h2>Piano delle azioni correttive (VRI-11)</h2><p class="mut">Priorità: 1 urgente (30 gg) · 2 breve (90 gg) · 3 medio (12 mesi) · 4 continuo. Generato dalle non conformità del sopralluogo, dalle verifiche dimensionali dell'esodo e dagli scaduti.</p>${A.length?`<table><tr><th>Prior.</th><th>Azione</th><th>Rif.</th><th>Responsabile</th><th>Scadenza</th></tr>${A.map(a=>`<tr><td style="background:${a.priorita==1?'var(--ko)':'var(--amber)'}"><b>${a.priorita}</b></td><td>${esc(a.azione)}</td><td>${esc(a.misura)}</td><td>${esc(a.responsabile)}</td><td>${esc(a.scadenza||{1:'entro 30 gg',2:'entro 90 gg',3:'entro 12 mesi',4:'continuo'}[a.priorita])}</td></tr>`).join('')}</table>`:'<span class="mut">Nessuna azione: compare dopo il sopralluogo.</span>'}</div>`}
+function drawDoc(){const s=R.sintesi;$('#t-doc').innerHTML=`<div class="card"><h2>Genera i documenti</h2>
+ <p>Template applicato: <b>${{minicodice:'VRI Minicodice (basso rischio)',codice:'VRI Codice integrale (RTO)',raccordo:'VRI di raccordo con pratica VVF'}[s.template]}</b> + Piano di Emergenza. Stato: <b>${s.stato}</b>.</p>
+ ${s.stato==='BOZZA'?'<div class="warn">Il documento è in <b>BOZZA</b>: i campi non ancora determinati restano evidenziati in arancio nel file e la scheda di sopralluogo non è completa. Per l\'esibizione agli organi di vigilanza completa dati e sopralluogo, rigenera e fai firmare (DdL, RSPP, RLS).</div>':''}
+ <button class="p" id="gen">Genera Word + PDF</button><div id="out" style="margin-top:12px"></div></div>`;
+ $('#gen').onclick=async()=>{$('#gen').disabled=true;$('#gen').textContent='Generazione in corso…';try{const j=await api(`/api/pratiche/${PID}/genera`,{method:'POST'});
+  const u=n=>`/api/pratiche/${PID}/download/${encodeURIComponent(n)}`;let h='';
+  j.documenti.forEach(d=>{h+=`<div class="card"><b>${esc(d.tipo)}</b> — campi da completare: <b>${d.campi_da_completare}</b> ${d.verifica.length?`<div class="warn">${esc(d.verifica.join('; '))}</div>`:''}<br><a class="dl big" href="${u(d.file)}">Word modificabile (.docx)</a>${d.pdf?`<a class="dl" href="${u(d.pdf)}">PDF</a>`:''}</div>`});
+  h+=`<a class="dl" href="${u(j.relazione)}">Relazione di controllo (tracciabilità)</a><a class="dl big" href="${u(j.zip)}">Fascicolo completo (.zip)</a>`;$('#out').innerHTML=h}catch(e){alert(e.message)}finally{$('#gen').disabled=false;$('#gen').textContent='Genera Word + PDF'}}}
+if(PID){api('/api/pratiche/'+PID).then(j=>{R=j;init()}).catch(()=>{location.hash='';PID=''})}
+</script>
+</body>
+</html>

@@ -15,6 +15,7 @@ PATTERNS = {
                         rf"{NUM}\s*(?:clienti|ospiti|avventori|coperti|posti a sedere)"],
     "superficie_mq": [rf"{NUM}\s*(?:mq|m2|m²|metri quadr\w+)", rf"superficie[^\d\n]{{0,30}}{NUM}"],
     "piani": [r"(\d+)\s*piani\s*fuori\s*terra", r"(?:su|di)\s*(\d+)\s*piani"],
+    "kw_termico": [rf"(?:impianto termico|caldaia|generatore di calore|centrale termica)[^\d\n]{{0,60}}{NUM}\s*kW", rf"{NUM}\s*kW"],
     "qf_mj_m2": [rf"(?:carico d.?incendio|qf)[^\d\n]{{0,40}}{NUM}\s*MJ"],
 }
 TXT = {
@@ -42,7 +43,7 @@ PRESIDI = {
     "rivelazione/allarme incendio": r"\b(rivelazion\w+|rilevator\w+ (?:di )?fum\w+|centralina antincendio|allarme incendio|IRAI)",
     "sprinkler": r"\b(sprinkler|spegnimento automatico)",
     "illuminazione di emergenza": r"illuminazione (?:di )?emergenza|lampade? di emergenza",
-    "segnaletica sicurezza": r"segnaletica|cartell\w+ (?:di )?(?:sicurezza|uscita)|uscita di sicurezza",
+    "segnaletica sicurezza": r"segnaletica|cartell\w+ (?:di )?(?:sicurezza|uscita)|usc\w*\s*(?:d\w*\s*)?sicurezza",
     "porte tagliafuoco": r"\b(?:porte? )?(?:tagliafuoco|REI \d+|EI ?\d+)",
     "evacuatori fumo": r"\b(evacuator\w+|EFC|aperture di smaltimento)",
 }
@@ -99,7 +100,7 @@ def estrai(caso: Caso) -> Caso:
         if k not in caso.dati or not caso.dati[k].confermato:
             caso.set(k, v, fonte, confermato=False)
 
-    for k in ("occupanti_lavoratori", "occupanti_terzi", "superficie_mq", "qf_mj_m2", "piani"):
+    for k in ("occupanti_lavoratori", "occupanti_terzi", "superficie_mq", "qf_mj_m2", "piani", "kw_termico"):
         if k in cand:
             vals = cand[k]
             v, f = max(vals, key=lambda x: x[0])      # cautelativo: valore massimo
@@ -109,6 +110,14 @@ def estrai(caso: Caso) -> Caso:
                 caso.add("Estrazione", "attenzione",
                          f"Valori discordanti per «{k}»: {distinct} (fonti: {sorted({x[1] for x in vals})}). "
                          f"Assunto il massimo ({v:g}) in via cautelativa: il tecnico deve confermare.")
+    # liquidi (litri) accanto a solventi/vernici/infiammabili
+    lit = []
+    for ev in caso.evidenze:
+        for m in re.finditer(r"(?:solvent\w+|vernic\w+|diluent\w+|infiammabil\w+|benzina|gasolio|alcool)[^.\n]{0,80}?" + NUM + r"\s*(?:litri|l\b)", ev.get("testo", ""), re.I):
+            lit.append(_n(m))
+    if lit:
+        put("litri_infiammabili", sum(lit), "documenti (somma dei litri citati)")
+    # nome piani
     for k in ("ragione_sociale", "indirizzo", "ateco", "datore_lavoro", "rspp", "attivita_descrizione"):
         if k in cand: put(k, cand[k][0][0], cand[k][0][1])
     for k in GESTIONE:
