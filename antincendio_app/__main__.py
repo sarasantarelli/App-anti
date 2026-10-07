@@ -12,7 +12,13 @@ def main(argv=None):
     g = sub.add_parser("genera", help="genera VRI e Piano di Emergenza da una cartella di documenti/foto/video")
     g.add_argument("cartella", nargs="?", default=None); g.add_argument("--dati", help="file JSON con i dati noti (chiavi come nel form)")
     g.add_argument("--out", default="out"); g.add_argument("--no-pdf", action="store_true")
+    sub.add_parser("verifica-template", help="audit di coerenza e refusi dei template")
     a = ap.parse_args(argv)
+    if a.cmd == "verifica-template":
+        from .audit import verifica
+        r = verifica()
+        print("\n".join("- " + x for x in r) or "Nessuna anomalia rilevata.")
+        return 0
     if a.cmd == "serve":
         import uvicorn
         uvicorn.run("antincendio_app.web.server:app", host=a.host, port=a.port)

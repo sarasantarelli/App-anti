@@ -1,1 +1,66 @@
-# App-anti
+# App-anti — Valutazione del Rischio Incendio autogestita
+
+Genera **VRI** (Valutazione del Rischio Incendio, artt. 28 e 46 D.Lgs. 81/08) e **Piano di Emergenza** compilando i
+**template ufficiali** (`templates/`): stessi colori, font e struttura, **Word modificabile + PDF**, pronti per essere
+esibiti agli organi di vigilanza dopo sopralluogo e firma. **Nessuna chiave API**: lettura OCR, calcoli e redazione sono
+locali (RapidOCR/ONNX, ffmpeg, LibreOffice).
+
+```
+documenti, foto, video del cliente ──► LETTURA ─► ESTRAZIONE (dato + fonte) ─► CONTROLLO dati mancanti
+                                                                                   │
+        ┌───────────────────────────── COORDINATORE ◄──────────────────────────────┘
+        ▼
+ RISCHIO (Rvita/Rbeni/Rambiente, qf,d) ─► NORMATIVO (ramo A/B/C, DPR 151, Allegato I) ─► STRATEGIA (S.1–S.10, esodo, estintori)
+        ▼
+ MISURE (check-list dal template → azioni correttive) ─► CONTROLLO incrociato ─► NORME (citazioni dal corpus) ─► COMPOSIZIONE docx/pdf ─► VERIFICA
+```
+
+| Agente | Compito |
+|---|---|
+| Coordinatore (`coordinatore.py`) | regista: ordine, cicli di ricalcolo, stato BOZZA / PRONTO PER LA FIRMA, relazione di tracciabilità |
+| Lettura / Estrazione | PDF, Word, Excel, immagini, video → dati strutturati **con la fonte di ciascun dato** (non confermati finché il tecnico non li valida) |
+| Normativo | percorso DM 3/9/2021 art. 2 (A/B/C), assoggettamento DPR 151/2011 (binario parallelo), requisiti Allegato I; sceglie il template |
+| Rischio | δocc, δα, Rvita, Rbeni, Rambiente, qf (tabellare/analitico), qf,d e classe REI |
+| Strategia / Misure | livelli S.1–S.10 valutando **i criteri letti dal template**; esodo (uscite, Lcc, Les, larghezze), estintori A/B/F, formazione e addetti |
+| Controllo | completezza, incoerenze, soglie al limite, presidi richiesti ma non rilevati, confini di responsabilità |
+| Norme | indicizza i testi in `norme/` e li cita (file/pagina) nei rilievi |
+
+**Template scelto automaticamente:** `VRI_Minicodice` (basso rischio) · `VRI_Codice_Integrale_RTO` (non basso) ·
+`VRI_Raccordo_CPI` (attività soggetta con pratica VVF) · sempre `Piano_di_Emergenza`.
+
+## Regole di sicurezza del documento (per l'esibizione)
+- Il documento è **BOZZA** finché il sopralluogo non è completo e non ci sono dati bloccanti mancanti; i campi non determinati restano **evidenziati in arancio** e non si scrive mai «nessuna non conformità» se la check-list è incompleta.
+- Le voci precompilate da documenti restano «da confermare in sito». Le NC generano automaticamente le azioni correttive (VRI-11).
+- La VRI **non sostituisce** progetto, SCIA o asseverazione del professionista antincendio: se l'attività è soggetta, il documento lo dichiara.
+- Firme (DdL, RSPP, RLS) e responsabilità restano delle persone. Ogni dato ha la sua fonte; la *Relazione di controllo* ricostruisce il ragionamento.
+
+## Uso
+**Web (consigliato):** `python -m antincendio_app serve` → http://localhost:8000 — carica i file, rivedi *Esito → Dati → Sopralluogo → Azioni → Documenti*.
+**Riga di comando:** `python -m antincendio_app genera ./cartella_cliente --dati dati.json --out ./out`
+**Audit dei template:** `python -m antincendio_app verifica-template` (vedi `docs/VERIFICA_TEMPLATE.md`)
+
+Installazione locale: Python 3.10+, `pip install -r requirements.txt`, e per i PDF **LibreOffice** + per i video **ffmpeg**.
+Su Windows la via più semplice è Docker Desktop: `docker compose up --build` (poi http://localhost:8000).
+
+## Pubblicazione (accesso da fuori di questo PC)
+L'app è un'immagine Docker autonoma. Tre strade, dalla più semplice:
+1. **Render** (consigliata): nuovo *Blueprint* → seleziona questo repository (`render.yaml`). La password d'accesso viene generata e mostrata nel pannello.
+2. **Qualsiasi VPS / PC sempre acceso**: `APP_PASSWORD=<password> docker compose up -d --build`; per HTTPS usa Caddy/Nginx oppure Cloudflare Tunnel (`cloudflared tunnel --url http://localhost:8000`).
+3. **GitHub Actions** pubblica l'immagine su `ghcr.io/<owner>/app-anti:latest` a ogni push su `main`: usabile da Fly.io, Railway, Azure, ecc.
+
+Sicurezza (contiene dati di clienti): imposta **sempre** `APP_PASSWORD` (HTTP Basic, solo su HTTPS); ID pratica casuali; i dati si
+cancellano dopo `RETENTION_HOURS` (default 72 h); upload limitato da `MAX_UPLOAD_MB`. Valuta l'informativa GDPR verso i clienti.
+
+## Limiti dichiarati
+- Foto/video: senza modello di visione si leggono i **testi** (cartelli, targhe estintori, planimetrie quotate), non gli oggetti.
+- Lo screening DPR 151/2011 copre le voci più comuni, non l'intero Allegato I; l'esito è sempre «stimato».
+- I template hanno alcune incoerenze (docs/VERIFICA_TEMPLATE.md); gli estremi dell'Accordo Stato-Regioni 17/04/2025 vanno confermati.
+- Il giudizio finale (δα, aree a rischio specifico, livelli S.x dove i criteri sono discrezionali) è del professionista: l'app propone in modo cautelativo e lo dichiara.
+
+## Aggiornare i template
+Sostituisci i file in `templates/` mantenendo i nomi e la struttura (tabelle e titoli): criteri, check-list e tabelle di calcolo
+sono **letti dal template**, quindi il comportamento segue le tue modifiche. Dopo la modifica: `python -m pytest`.
+
+## Struttura
+`antincendio_app/agents/` agenti · `compositore/` compilazione dei 4 template · `checklist.py` voci di verifica dai template ·
+`criteri.py` valutatore dei criteri S.x-2 · `regole.py` tabelle di calcolo · `web/` interfaccia · `tests/` 15 test.

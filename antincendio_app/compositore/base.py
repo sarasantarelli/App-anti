@@ -360,7 +360,25 @@ class Base:
                         elif r.text.strip() == "AZIENDA":
                             r.text = str(nome)
 
+    REFUSI = {"ITERVENTO": "INTERVENTO", "piú": "più", "Idirizzo": "Indirizzo"}
+
+    def correggi_refusi(self):
+        """Refusi evidenti dei template (documentati in docs/VERIFICA_TEMPLATE.md): corretti solo nell'output, il template resta intatto."""
+        def fix(p):
+            for r in p.runs:
+                for a, b in self.REFUSI.items():
+                    if a in r.text:
+                        r.text = r.text.replace(a, b)
+        for p in self.doc.paragraphs:
+            fix(p)
+        for t in self.doc.tables:
+            for row in t.rows:
+                for c in K.uniq_cells(row):
+                    for p in c.paragraphs:
+                        fix(p)
+
     def finalize(self):
+        self.correggi_refusi()
         self.header_footer()
         K.strip_guides(self.doc, keep=self.tieni_guide)
         n = K.mark_pending(self.doc)

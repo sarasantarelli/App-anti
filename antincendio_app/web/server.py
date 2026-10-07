@@ -15,7 +15,19 @@ from .. import service, schema, __version__
 
 STATIC = Path(__file__).parent / "static"
 store = service.Store()
-app = FastAPI(title="App-anti — Valutazione rischio incendio", version=__version__)
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    def loop():
+        while True:
+            store.cleanup(); time.sleep(3600)
+    threading.Thread(target=loop, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="App-anti — Valutazione rischio incendio", version=__version__, lifespan=lifespan)
 security = HTTPBasic(auto_error=False)
 PASSWORD = os.environ.get("APP_PASSWORD", "")
 
@@ -37,14 +49,6 @@ def _pid(pid: str):
     return pid
 
 
-@app.on_event("startup")
-def _startup():
-    def loop():
-        while True:
-            store.cleanup(); time.sleep(3600)
-    threading.Thread(target=loop, daemon=True).start()
-
-
 @app.get("/api/health")
 def health():
     return {"ok": True, "versione": __version__}
@@ -55,6 +59,12 @@ def get_schema():
     return {"campi": [{"chiave": k, "label": l, "tipo": t, "gruppo": g, "aiuto": a} for k, l, t, g, a in schema.CAMPI],
             "tipologie": schema.TIPOLOGIE,
             "liste": {k: {"label": v["label"], "colonne": [{"chiave": c, "label": l, "tipo": t} for c, l, t in v["colonne"]]} for k, v in schema.LISTE.items()}}
+
+
+@app.get("/api/norme", dependencies=[Depends(auth)])
+def norme_cerca(q: str, n: int = 5):
+    from ..agents import norme
+    return norme.cerca(q, min(n, 10))
 
 
 @app.post("/api/pratiche", dependencies=[Depends(auth)])

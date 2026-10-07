@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      APP_PASSWORD: "${APP_PASSWORD:-cambia-questa-password}"
+      RETENTION_HOURS: "72"
+    volumes:
+      - dati:/data
+      - ./norme:/app/norme:ro        # facoltativo: corpus normativo da indicizzare
+volumes:
+  dati:

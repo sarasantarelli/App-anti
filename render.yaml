@@ -1,0 +1,14 @@
+# Pubblicazione 1-click su Render (https://render.com): "New → Blueprint" e seleziona questo repository.
+services:
+  - type: web
+    name: app-anti
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_PASSWORD
+        generateValue: true        # la password di accesso viene generata e mostrata nel pannello Render
+      - key: RETENTION_HOURS
+        value: "72"
+      - key: MAX_UPLOAD_MB
+        value: "200"

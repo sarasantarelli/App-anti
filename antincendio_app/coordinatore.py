@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 import docx
 from .models import Caso
-from .agents import ingestion, estrazione, rischio, normativo, strategia, controllo
+from .agents import ingestion, estrazione, rischio, normativo, strategia, controllo, norme
 from . import checklist as CL
 from .compositore import minicodice, codice, raccordo, pe
 
@@ -63,6 +63,7 @@ def analizza(caso: Caso, risposte: dict | None = None) -> tuple[Caso, list, dict
     caso.esito["azioni"] = az
     caso.esito["risposte"] = {k: v for k, v in eff.items()}
     controllo.post(caso, voci, eff)
+    norme.arricchisci(caso)
     return caso, voci, eff
 
 

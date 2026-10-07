@@ -121,7 +121,7 @@ def compila(caso, voci, risposte, out, tieni_guide=False):
     b.par_fill("δα adottato", [f"δα = {r['dalfa']} — {r['dalfa_motivo']}"])
     for _, t in K.find_tables(b.doc, "δocc"):
         if len(t.rows) == 9:
-            for rw in t.rows[2:]:
+            for rw in t.rows[1:]:
                 for cell in K.uniq_cells(rw)[2:]:
                     if K.ctext(cell).split(" ")[0] == r["rvita"]:
                         K.set_cell(cell, f"{r['rvita']} ◄ adottato", bold=True)
