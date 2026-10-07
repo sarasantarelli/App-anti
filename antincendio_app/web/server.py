@@ -26,6 +26,8 @@ async def lifespan(_app):
         while True:
             store.cleanup(); time.sleep(3600)
     threading.Thread(target=loop, daemon=True).start()
+    from .. import manutenzione
+    manutenzione.avvia_backup_periodici()
     yield
 
 
@@ -176,12 +178,93 @@ def genera(pid: str, pdf: bool = True):
 
 
 @app.get("/api/pratiche/{pid}/download/{nome}", dependencies=[Depends(auth)])
-def download(pid: str, nome: str):
+def download(pid: str, nome: str, v: str | None = None):
     _pid(pid)
-    f = store.path(pid) / "out" / Path(nome).name
-    if not f.exists():
+    f = service.file_emissione(store, pid, nome, v)
+    if not f:
         raise HTTPException(404, "File non trovato")
     return FileResponse(f, filename=f.name)
+
+
+@app.post("/api/pratiche/{pid}/revisione", dependencies=[Depends(auth)])
+async def revisione(pid: str, request: Request):
+    _pid(pid)
+    body = await request.json()
+    service.nuova_revisione(store, pid, str(body.get("descrizione", "")).strip())
+    service.analizza(store, pid)
+    return {"id": pid, **service.riepilogo(store, pid)}
+
+
+@app.post("/api/pratiche/{pid}/duplica", dependencies=[Depends(auth)])
+def duplica(pid: str):
+    _pid(pid)
+    nuovo = service.duplica(store, pid)
+    service.analizza(store, nuovo)
+    return {"id": nuovo}
+
+
+# ---- sistema: backup e aggiornamento ------------------------------------------------------------
+def _riavvia():
+    if os.environ.get("APP_SUPERVISED") == "1":
+        threading.Timer(1.0, lambda: os._exit(3)).start()
+        return True
+    return False
+
+
+@app.get("/api/sistema", dependencies=[Depends(auth)])
+def sistema():
+    from .. import manutenzione as M
+    return {"versione": __version__, "dati": str(service.DATA_DIR), "backup_dir": str(M.BACKUP_DIR), "backup": M.elenco_backup(),
+            "supervisionato": os.environ.get("APP_SUPERVISED") == "1", "update_url": M.UPDATE_URL, "pratiche": len(store.elenco())}
+
+
+@app.post("/api/sistema/backup", dependencies=[Depends(auth)])
+def sistema_backup():
+    from .. import manutenzione as M
+    M.crea_backup()
+    return {"backup": M.elenco_backup()}
+
+
+@app.get("/api/sistema/backup/{nome}", dependencies=[Depends(auth)])
+def sistema_backup_dl(nome: str):
+    from .. import manutenzione as M
+    f = M.BACKUP_DIR / Path(nome).name
+    if not f.exists():
+        raise HTTPException(404, "Backup non trovato")
+    return FileResponse(f, filename=f.name)
+
+
+@app.post("/api/sistema/ripristina", dependencies=[Depends(auth)])
+async def sistema_ripristina(file: UploadFile = File(...)):
+    from .. import manutenzione as M
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as t:
+        t.write(await file.read())
+    try:
+        M.crea_backup()                      # sicurezza: salva lo stato attuale prima di ripristinare
+        n = M.ripristina(Path(t.name))
+    except Exception as e:
+        raise HTTPException(400, f"ripristino non riuscito: {e}")
+    return {"file_ripristinati": n}
+
+
+@app.post("/api/sistema/aggiorna", dependencies=[Depends(auth)])
+async def sistema_aggiorna(file: UploadFile | None = File(default=None)):
+    """Aggiorna il codice da uno ZIP caricato (o da internet se non si allega nulla). Dati, norme e template restano intatti."""
+    from .. import manutenzione as M
+    import tempfile
+    try:
+        M.crea_backup()
+        if file is not None:
+            with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as t:
+                t.write(await file.read())
+            r = M.applica_zip(Path(t.name))
+        else:
+            r = M.scarica_e_applica()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    r["riavvio_automatico"] = _riavvia()
+    return r
 
 
 @app.get("/favicon.ico")

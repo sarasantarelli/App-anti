@@ -46,7 +46,7 @@ a.dl.big{background:var(--red);color:#fff;border-color:var(--red)}
 </style>
 </head>
 <body>
-<header><h1>Valutazione del Rischio Incendio</h1><small>VRI · Piano di Emergenza — D.Lgs. 81/08 artt. 28, 46 · DM 3/8/2015 · DM 2-3/9/2021</small><span class="sp"></span><span id="stato" class="badge hide"></span><button class="s hide" id="nuova">Nuova pratica</button></header>
+<header><h1>Valutazione del Rischio Incendio</h1><small>VRI · Piano di Emergenza — D.Lgs. 81/08 artt. 28, 46 · DM 3/8/2015 · DM 2-3/9/2021</small><span class="sp"></span><span id="salv" style="color:#9ccc65;font-size:12px"></span><span id="stato" class="badge hide"></span><button class="s" id="sistbtn">Sistema</button><button class="s hide" id="nuova">Nuova pratica</button></header>
 <main>
 <section id="home" class="card">
   <h2>1 · Carica la documentazione del cliente</h2>
@@ -57,6 +57,7 @@ a.dl.big{background:var(--red);color:#fff;border-color:var(--red)}
 </section>
 <section id="recenti" class="card hide"><h2>Pratiche salvate su questo PC</h2><div id="rl"></div></section>
 <section id="diag" class="card hide"></section>
+<section id="sist" class="hide"></section>
 <section id="work" class="hide">
  <nav class="tabs" id="tabs"></nav>
  <div id="t-esito"></div><div id="t-dati" class="hide"></div><div id="t-sopr" class="hide"></div><div id="t-azioni" class="hide"></div><div id="t-doc" class="hide"></div><div id="t-norme" class="hide"></div>
@@ -84,7 +85,14 @@ function draw(){head();const T=[['esito','Esito'],['dati','Dati'],['sopr','Sopra
  T.forEach(([k])=>$('#t-'+k).classList.toggle('hide',k!==tab));
  ({esito:drawEsito,dati:drawDati,sopr:drawSopr,azioni:drawAzioni,doc:drawDoc,norme:drawNorme})[tab]()}
 function drawEsito(){const s=R.sintesi,c=s.completezza||{percento:0,voci:0,risposte:0};
- const q=s.qfd;let h=`<div class="card"><h2>Esito dell'analisi</h2><p><b>${esc(s.ramo)}</b></p><div class="kpi">
+ const q=s.qfd;const RQ=s.requisiti||[];const ico=r=>r.ok===true?'<span style="color:#2e7d32">✓</span>':r.ok===false?'<span style="color:var(--red)">✗</span>':'<span style="color:#b26a00">?</span>';
+ const modello={minicodice:'Minicodice (basso rischio)',codice:'Codice integrale (non basso)',raccordo:'Raccordo con pratica VVF'};
+ let h=`<div class="card"><h2>Scelta del percorso normativo ${s.provvisoria?'<span class="pill" style="background:var(--yellow);color:#212121">PROVVISORIA</span>':'<span class="pill" style="background:#2e7d32;color:#fff">DEFINITIVA</span>'}</h2>
+ <p style="font-size:17px"><b>→ ${modello[s.template]}</b>${s.soggetta_dpr151?' · attività soggetta a controlli VVF (DPR 151/2011)':' · attività non soggetta (DPR 151/2011)'}</p>
+ <p>${esc(s.ramo)}</p>
+ <table><tr><th>Requisito (DM 3/9/2021 All. I)</th><th>Soglia</th><th>Dato</th><th></th></tr>${RQ.map(r=>`<tr><td>${esc(r.id)} · ${esc(r.testo)}</td><td>${esc(r.soglia)}</td><td>${esc(r.valore)}</td><td>${ico(r)}</td></tr>`).join('')}</table>
+ <p class="mut" style="font-size:13px">✓ soddisfatto · ✗ non soddisfatto · ? dato mancante. Tutti ✓ e non soggetta → Minicodice; anche un solo ✗ → Codice integrale; attività soggetta → Raccordo con la pratica VVF. Con i ? la scelta è provvisoria: inserisci i dati nella scheda «Dati».</p></div>
+ <div class="card"><h2>Esito dell'analisi</h2><div class="kpi">
  <div><b>${s.rischio_basso?'BASSO':'NON BASSO'}</b><span>classificazione (DM 2/9/2021)</span></div>
  <div><b>${esc(s.rvita)}</b><span>Rvita</span></div><div><b>${s.rbeni}</b><span>Rbeni</span></div>
  <div><b>${s.rambiente?'signif.':'non signif.'}</b><span>Rambiente</span></div>
@@ -115,15 +123,16 @@ function drawDati(){dirty={};const D=R.dati,g={};SCHEMA.campi.forEach(c=>(g[c.gr
  for(const [k,L] of Object.entries(SCHEMA.liste)){const rows=(D[k]&&D[k].valore)||[];
   h+=`<div class="card"><h2>${esc(L.label)}</h2><table data-l="${k}"><tr>${L.colonne.map(c=>`<th>${esc(c.label)}</th>`).join('')}</tr>${rows.map(r=>rowL(L,r)).join('')}</table><p><button class="s" onclick="addRow('${k}')">+ riga</button></p></div>`}
  h+='<div class="card"><button class="p" id="save">Salva e rianalizza</button></div>';
- $('#t-dati').innerHTML=h;$('#t-dati').oninput=e=>{const k=e.target.dataset.k;if(k)dirty[k]=1;else dirty['_liste']=1};$('#t-dati').onchange=$('#t-dati').oninput;
- $('#save').onclick=saveDati}
+ $('#t-dati').innerHTML=h;let AT;$('#t-dati').oninput=e=>{const k=e.target.dataset.k;if(k)dirty[k]=1;else dirty['_liste']=1;clearTimeout(AT);AT=setTimeout(()=>saveDati(true),1500)};$('#t-dati').onchange=$('#t-dati').oninput;
+ $('#save').onclick=()=>saveDati(false)}
 function rowL(L,r={}){return `<tr>${L.colonne.map(c=>c.tipo==='bool'?`<td><input type="checkbox" data-c="${c.chiave}" ${r[c.chiave]?'checked':''}></td>`:`<td><input type="${c.tipo==='num'?'number':'text'}" step="any" data-c="${c.chiave}" value="${esc(r[c.chiave]??'')}"></td>`).join('')}</tr>`}
 function addRow(k){const L=SCHEMA.liste[k];document.querySelector(`table[data-l=${k}]`).insertAdjacentHTML('beforeend',rowL(L));dirty['_liste']=1}
-async function saveDati(){const body={};
+async function saveDati(silent){if(!Object.keys(dirty).length&&silent)return;const body={};
  document.querySelectorAll('#t-dati [data-k]').forEach(el=>{const k=el.dataset.k;if(!dirty[k])return;let v;
   if(el.multiple)v=[...el.selectedOptions].map(o=>o.value);else if(el.tagName==='SELECT')v=el.value===''?null:el.value==='true';else v=el.value;body[k]=v});
  if(dirty['_liste'])document.querySelectorAll('#t-dati table[data-l]').forEach(t=>{const L=SCHEMA.liste[t.dataset.l];body[t.dataset.l]=[...t.querySelectorAll('tr')].slice(1).map(tr=>{const r={};tr.querySelectorAll('[data-c]').forEach(i=>r[i.dataset.c]=i.type==='checkbox'?i.checked:i.value);return r})});
- $('#save').disabled=true;try{setR(await api(`/api/pratiche/${PID}/dati`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));drawDati();alert('Dati salvati: analisi aggiornata.')}catch(e){alert(e.message)}finally{if($('#save'))$('#save').disabled=false}}
+ try{setR(await api(`/api/pratiche/${PID}/dati`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));dirty={};saved();if(!silent){drawDati()}}catch(e){if(!silent)alert(e.message)}}
+function saved(){$('#salv').textContent='Salvato ✓ '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}
 function drawSopr(){const g={};R.voci.forEach(v=>{const k=v.misura||'—';(g[k]=g[k]||[]).push(v)});const c=R.sintesi.completezza||{};
  let h=`<div class="card"><h2>Scheda di sopralluogo</h2><p class="mut">Le voci sono lette dal template ufficiale. Imposta l'esito (C conforme · NC non conforme · NA non applicabile): le NC generano automaticamente le azioni correttive (VRI-11). Le voci precompilate dai documenti vanno sempre confermate in sito.</p><div class="bar"><i style="width:${c.percento||0}%"></i></div><small class="mut" id="prog">${c.risposte||0}/${c.voci||0} completate</small></div>`;
  for(const [m,vs] of Object.entries(g)){h+=`<div class="card"><h2>${esc(m)}</h2>`;let gr='';
@@ -135,18 +144,23 @@ function drawSopr(){const g={};R.voci.forEach(v=>{const k=v.misura||'—';(g[k]=
  $('#t-sopr').innerHTML=h;
  $('#t-sopr').querySelectorAll('.voce').forEach(d=>{const id=d.dataset.id;let t;
   const send=async(es)=>{const body={[id]:{esito:es??(d.querySelector('.btns .on')?.dataset.e||null),nota:d.querySelector('[data-n]').value,azione:d.querySelector('[data-a]').value}};
-   try{setR(await api(`/api/pratiche/${PID}/risposte`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));const c=R.sintesi.completezza;$('#prog').textContent=`${c.risposte}/${c.voci} completate`;document.querySelector('#t-sopr .bar i').style.width=c.percento+'%'}catch(e){alert(e.message)}};
+   try{setR(await api(`/api/pratiche/${PID}/risposte`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));saved();const c=R.sintesi.completezza;$('#prog').textContent=`${c.risposte}/${c.voci} completate`;document.querySelector('#t-sopr .bar i').style.width=c.percento+'%'}catch(e){alert(e.message)}};
   d.querySelectorAll('.btns button').forEach(b=>b.onclick=()=>{const was=b.classList.contains('on');d.querySelectorAll('.btns button').forEach(x=>x.className='');const es=was?'':b.dataset.e;if(!was)b.className='on '+es;d.className='voce '+es;d.querySelector('[data-a]').classList.toggle('hide',es!=='NC');send(es||null)});
   d.querySelectorAll('[data-n],[data-a]').forEach(i=>i.oninput=()=>{clearTimeout(t);t=setTimeout(()=>send(),700)})})}
 function drawAzioni(){const A=R.azioni;$('#t-azioni').innerHTML=`<div class="card"><h2>Piano delle azioni correttive (VRI-11)</h2><p class="mut">Priorità: 1 urgente (30 gg) · 2 breve (90 gg) · 3 medio (12 mesi) · 4 continuo. Generato dalle non conformità del sopralluogo, dalle verifiche dimensionali dell'esodo e dagli scaduti.</p>${A.length?`<table><tr><th>Prior.</th><th>Azione</th><th>Rif.</th><th>Responsabile</th><th>Scadenza</th></tr>${A.map(a=>`<tr><td style="background:${a.priorita==1?'var(--ko)':'var(--amber)'}"><b>${a.priorita}</b></td><td>${esc(a.azione)}</td><td>${esc(a.misura)}</td><td>${esc(a.responsabile)}</td><td>${esc(a.scadenza||{1:'entro 30 gg',2:'entro 90 gg',3:'entro 12 mesi',4:'continuo'}[a.priorita])}</td></tr>`).join('')}</table>`:'<span class="mut">Nessuna azione: compare dopo il sopralluogo.</span>'}</div>`}
-function drawDoc(){const s=R.sintesi;$('#t-doc').innerHTML=`<div class="card"><h2>Genera i documenti</h2>
- <p>Template applicato: <b>${{minicodice:'VRI Minicodice (basso rischio)',codice:'VRI Codice integrale (RTO)',raccordo:'VRI di raccordo con pratica VVF'}[s.template]}</b> + Piano di Emergenza. Stato: <b>${s.stato}</b>.</p>
- ${s.stato==='BOZZA'?'<div class="warn">Il documento è in <b>BOZZA</b>: i campi non ancora determinati restano evidenziati in arancio nel file e la scheda di sopralluogo non è completa. Per l\'esibizione agli organi di vigilanza completa dati e sopralluogo, rigenera e fai firmare (DdL, RSPP, RLS).</div>':''}
- <button class="p" id="gen">Genera Word + PDF</button><div id="out" style="margin-top:12px"></div></div>`;
- $('#gen').onclick=async()=>{$('#gen').disabled=true;$('#gen').textContent='Generazione in corso…';try{const j=await api(`/api/pratiche/${PID}/genera`,{method:'POST'});
-  const u=n=>`/api/pratiche/${PID}/download/${encodeURIComponent(n)}`;let h='';
-  j.documenti.forEach(d=>{h+=`<div class="card"><b>${esc(d.tipo)}</b> — campi da completare: <b>${d.campi_da_completare}</b> ${d.verifica.length?`<div class="warn">${esc(d.verifica.join('; '))}</div>`:''}<br><a class="dl big" href="${u(d.file)}">Word modificabile (.docx)</a>${d.pdf?`<a class="dl" href="${u(d.pdf)}">PDF</a>`:''}</div>`});
-  h+=`<a class="dl" href="${u(j.relazione)}">Relazione di controllo (tracciabilità)</a><a class="dl big" href="${u(j.zip)}">Fascicolo completo (.zip)</a>`;$('#out').innerHTML=h}catch(e){alert(e.message)}finally{$('#gen').disabled=false;$('#gen').textContent='Genera Word + PDF'}}}
+function drawDoc(){const s=R.sintesi,u=(n,v)=>`/api/pratiche/${PID}/download/${encodeURIComponent(n)}${v?'?v='+encodeURIComponent(v):''}`;
+ const em=(R.emissioni||[]);
+ let h=`<div class="card"><h2>Genera i documenti — Rev. ${esc(R.revisione)}</h2>
+ <p>Modello applicato: <b>${{minicodice:'VRI Minicodice (basso rischio)',codice:'VRI Codice integrale (RTO)',raccordo:'VRI di raccordo con pratica VVF'}[s.template]}</b> + Piano di Emergenza. Stato: <b>${s.stato}</b>.</p>
+ ${s.stato==='BOZZA'?'<div class="warn">Il documento è in <b>BOZZA</b>: i campi non ancora determinati restano evidenziati in arancio e la scheda di sopralluogo non è completa. Per l\'esibizione agli organi di vigilanza completa dati e sopralluogo, rigenera e fai firmare (DdL, RSPP, RLS).</div>':''}
+ <button class="p" id="gen">Genera Word + PDF</button> <span class="mut">Ogni emissione resta salvata nello storico qui sotto.</span><div id="out" style="margin-top:12px"></div></div>
+ <div class="card"><h2>Storico emissioni</h2>${em.length?`<table><tr><th>Quando</th><th>Rev.</th><th>Stato</th><th>File</th></tr>${em.map(e=>`<tr><td>${new Date(e.quando*1000).toLocaleString('it-IT')}</td><td>${esc(e.revisione)}</td><td>${esc(e.stato)}</td><td>${e.documenti.map(d=>`<a class="dl" href="${u(d.file,e.versione)}">${esc(d.tipo)} .docx</a>${d.pdf?`<a class="dl" href="${u(d.pdf,e.versione)}">PDF</a>`:''}`).join('')}<a class="dl" href="${u(e.relazione,e.versione)}">Relazione</a><a class="dl big" href="${u(e.zip,e.versione)}">ZIP</a></td></tr>`).join('')}</table>`:'<span class="mut">Nessuna emissione ancora.</span>'}</div>
+ <div class="card"><h2>Nuova revisione / duplicazione</h2><p class="mut">Una nuova revisione (art. 29 c.3 D.Lgs. 81/08: variazioni di layout, affollamento, processi, esito di eventi) incrementa il numero e aggiorna il registro delle revisioni; le emissioni precedenti restano nello storico.</p>
+ <div class="row"><input type="text" id="rdesc" placeholder="Descrizione della modifica (es. aggiornamento annuale, ampliamento magazzino)" style="flex:1"><button class="s" id="rbtn">Registra nuova revisione</button><button class="s" id="dbtn">Duplica pratica</button></div></div>`;
+ $('#t-doc').innerHTML=h;
+ $('#rbtn').onclick=async()=>{try{setR(await api(`/api/pratiche/${PID}/revisione`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({descrizione:$('#rdesc').value})}));saved();drawDoc()}catch(e){alert(e.message)}};
+ $('#dbtn').onclick=async()=>{try{const j=await api(`/api/pratiche/${PID}/duplica`,{method:'POST'});apri(j.id)}catch(e){alert(e.message)}};
+ $('#gen').onclick=async()=>{$('#gen').disabled=true;$('#gen').textContent='Generazione in corso…';try{const j=await api(`/api/pratiche/${PID}/genera`,{method:'POST'});R=await api('/api/pratiche/'+PID);drawDoc()}catch(e){alert(e.message);$('#gen').disabled=false;$('#gen').textContent='Genera Word + PDF'}}}
 async function drawNorme(){const j=await api('/api/norme/elenco');let h=`<div class="card"><h2>Norme, libri di valutazione, dispense</h2>
  <p class="mut">Carica qui i testi (PDF, Word, TXT): D.Lgs. 81/08, DM 3/8/2015, DM 1-2-3/9/2021, DPR 151/2011, regole tecniche, manuali VVF, libri di valutazione. Restano <b>su questo PC</b>. Vengono indicizzati una volta sola (i PDF scansionati con OCR: più lento) e usati per: <b>citare file e pagina</b> nei rilievi della Relazione di controllo e per la ricerca qui sotto.</p>
  <div id="ndrop" class="drop">Trascina qui i file oppure clicca<br><small class="mut">anche libri di centinaia di pagine</small></div><input id="nfi" type="file" multiple class="hide" accept=".pdf,.docx,.txt,.md"></div>
@@ -161,6 +175,19 @@ async function drawNorme(){const j=await api('/api/norme/elenco');let h=`<div cl
 async function delNorma(n){if(confirm('Rimuovere '+n+'?')){await api('/api/norme/'+encodeURIComponent(n),{method:'DELETE'});drawNorme()}}
 async function home(){try{const L=await api('/api/pratiche');if(L.length){$('#recenti').classList.remove('hide');$('#rl').innerHTML=`<table><tr><th>Cliente</th><th>Modello</th><th>Stato</th><th>Sopralluogo</th><th>Aggiornata</th><th></th></tr>${L.map(x=>`<tr><td><b>${esc(x.nome)}</b></td><td>${esc({minicodice:'Minicodice',codice:'Codice integrale',raccordo:'Raccordo VVF'}[x.ramo]||'—')}</td><td>${esc(x.stato)}</td><td>${x.completezza??'—'}${x.completezza!=null?'%':''}</td><td>${new Date(x.aggiornato*1000).toLocaleString('it-IT')}</td><td><button class="s" onclick="apri('${x.id}')">Apri</button> <button class="s" onclick="eli('${x.id}')">Elimina</button></td></tr>`).join('')}</table>`}}catch(e){}
  try{const D=await api('/api/diagnostica');const bad=D.filter(x=>!x.ok);if(bad.length){$('#diag').classList.remove('hide');$('#diag').innerHTML='<h2>Componenti opzionali mancanti</h2>'+bad.map(x=>`<div class="f ${x.obbligatorio?'critico':'attenzione'}"><b>${esc(x.nome)}</b>: ${esc(x.dettaglio)}<br><small>${esc(x.rimedio)}</small></div>`).join('')}}catch(e){}}
+async function sistema(){['home','recenti','diag','work'].forEach(i=>$('#'+i).classList.add('hide'));$('#sist').classList.remove('hide');
+ const j=await api('/api/sistema');$('#sist').innerHTML=`<div class="card"><h2>Sistema</h2><p>Versione <b>${esc(j.versione)}</b> · pratiche salvate: <b>${j.pratiche}</b> · dati in <code>${esc(j.dati)}</code></p><p><button class="s" onclick="location.reload()">← Torna alle pratiche</button></p></div>
+ <div class="card"><h2>Salvataggio e backup</h2><p class="mut">Ogni modifica è salvata subito su disco. In più, un backup completo delle pratiche viene creato ogni giorno (ultimi 14) in <code>${esc(j.backup_dir)}</code>. Copia ogni tanto quella cartella su un disco esterno o su OneDrive.</p>
+ <p><button class="p" id="bk">Crea backup ora</button> <input type="file" id="rst" accept=".zip" class="hide"><button class="s" id="rbt">Ripristina da un backup (.zip)</button></p>
+ ${j.backup.length?`<table><tr><th>File</th><th>MB</th><th>Quando</th></tr>${j.backup.map(b=>`<tr><td><a href="/api/sistema/backup/${encodeURIComponent(b.file)}">${esc(b.file)}</a></td><td>${b.mb}</td><td>${new Date(b.quando*1000).toLocaleString('it-IT')}</td></tr>`).join('')}</table>`:'<span class="mut">Nessun backup ancora.</span>'}</div>
+ <div class="card"><h2>Aggiornamento dell'app</h2><p class="mut">L'aggiornamento sostituisce solo il programma: <b>pratiche, norme caricate e template restano intatti</b> (i template nuovi, se diversi dai tuoi, vengono messi in <code>templates/_nuovi</code> per il confronto). Prima di aggiornare viene fatto un backup.</p>
+ <p><button class="p" id="upi">Aggiorna da internet</button> <input type="file" id="upz" accept=".zip" class="hide"><button class="s" id="upb">Aggiorna da file ZIP</button></p><div id="upr"></div>
+ ${j.supervisionato?'<p class="mut">Dopo l\'aggiornamento l\'app si riavvia da sola.</p>':'<p class="warn">App avviata senza riavvio automatico: dopo l\'aggiornamento chiudila e riaprila (usa il collegamento «App-anti VRI»).</p>'}</div>`;
+ $('#bk').onclick=async()=>{await api('/api/sistema/backup',{method:'POST'});sistema()};
+ $('#rbt').onclick=()=>$('#rst').click();$('#rst').onchange=async e=>{if(!confirm('Ripristinare le pratiche dal backup? Lo stato attuale viene prima salvato in un nuovo backup.'))return;const fd=new FormData();fd.append('file',e.target.files[0]);try{const r=await api('/api/sistema/ripristina',{method:'POST',body:fd});alert('Ripristinati '+r.file_ripristinati+' file');location.reload()}catch(x){alert(x.message)}};
+ const agg=async fd=>{$('#upr').innerHTML='<div class="warn">Aggiornamento in corso…</div>';try{const r=await api('/api/sistema/aggiorna',{method:'POST',body:fd});$('#upr').innerHTML=`<div class="f"><b>Aggiornato</b> ${esc(r.versione_precedente)} → ${esc(r.versione_nuova||'?')} (${r.file_aggiornati} file). ${r.template_nuovi_da_confrontare.length?'Template nuovi da confrontare: '+esc(r.template_nuovi_da_confrontare.join(', '))+'. ':''}${r.riavvio_automatico?'Riavvio in corso: la pagina si ricarica da sola.':'Chiudi e riapri l\'app.'}</div>`;if(r.riavvio_automatico)setTimeout(()=>location.reload(),15000)}catch(x){$('#upr').innerHTML=`<div class="f critico">${esc(x.message)}</div>`}};
+ $('#upi').onclick=()=>agg(new FormData());$('#upb').onclick=()=>$('#upz').click();$('#upz').onchange=e=>{const fd=new FormData();fd.append('file',e.target.files[0]);agg(fd)}}
+$('#sistbtn').onclick=sistema;
 async function apri(id){PID=id;location.hash=id;R=await api('/api/pratiche/'+id);await init()}
 async function eli(id){if(confirm('Eliminare definitivamente questa pratica e i suoi file?')){await api('/api/pratiche/'+id,{method:'DELETE'});home()}}
 home();

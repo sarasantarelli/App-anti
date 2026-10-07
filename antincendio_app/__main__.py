@@ -10,6 +10,7 @@ def main(argv=None):
     s = sub.add_parser("serve", help="avvia l'interfaccia web")
     s.add_argument("--host", default="127.0.0.1", help="127.0.0.1 = solo questo PC (default); 0.0.0.0 = visibile in rete")
     s.add_argument("--port", type=int, default=8000); s.add_argument("--no-browser", action="store_true")
+    sub.add_parser("gestionale", help="avvio in background + finestra dedicata (come un gestionale)")
     sub.add_parser("diagnostica", help="controlla l'installazione e dice cosa manca")
     g = sub.add_parser("genera", help="genera VRI e Piano di Emergenza da una cartella di documenti/foto/video")
     g.add_argument("cartella", nargs="?", default=None); g.add_argument("--dati", help="file JSON con i dati noti (chiavi come nel form)")
@@ -21,6 +22,9 @@ def main(argv=None):
         r = verifica()
         print("\n".join("- " + x for x in r) or "Nessuna anomalia rilevata.")
         return 0
+    if a.cmd == "gestionale":
+        from .gestionale import main as gm
+        return gm()
     if a.cmd == "diagnostica":
         from .ambiente import diagnostica
         bad = 0

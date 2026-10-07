@@ -40,8 +40,10 @@ def compila(caso, voci, risposte, out, tieni_guide=False):
         for i, key in enumerate(("C.a", "C.b", "C.c", "D", "RTV"), start=1):
             r = req[key]
             cs = K.uniq_cells(t.rows[i])
-            K.tick(cs[2], "Soddisfatto")
-            K.fill_tokens(cs[2], [f"{r['valore']} (soglia {r['soglia']})"])
+            if r["ok"] is True:
+                K.tick(cs[2], "Soddisfatto")
+                K.fill_tokens(cs[2], [f"{r['valore']} (soglia {r['soglia']})"])
+            # dato mancante: la cella resta da compilare (evidenziata), non si dichiara nulla
     # Correzione template: la VRI-2.3 dimostrava solo 5 requisiti; Allegato I richiede anche qf, sostanze, lavorazioni
     for _, t in K.find_tables(b.doc, "Requisito (Allegato I, p.to 1, c.2)"):
         extra = [("C.d", "Carico d'incendio: nessun materiale combustibile in quantità significative", "qf ≤ 900 MJ/m² (soglia indicativa)"),
@@ -53,12 +55,29 @@ def compila(caso, voci, risposte, out, tieni_guide=False):
             cs = K.uniq_cells(t.rows[base_row + k])
             K.set_cell(cs[0], testo); K.set_cell(cs[1], soglia)
             r_ = req[key]
-            K.choose(cs[2], "Soddisfatto"); K.set_cell(cs[2], f"☒ Soddisfatto — {r_['valore']}")
+            if r_["ok"] is True:
+                K.set_cell(cs[2], f"☒ Soddisfatto — {r_['valore']}")
         b.c.esito.setdefault("correzioni", []).append({"documento": "VRI Minicodice", "prima": "VRI-2.3 con 5 requisiti",
             "dopo": "VRI-2.3 con 8 requisiti (aggiunti qf ≤ 900, sostanze, lavorazioni)", "motivo": "l'Allegato I al DM 3/9/2021 li richiede cumulativamente"})
     for t in b.doc.tables:
         if len(t.rows) == 1 and K.ctext(t.rows[0].cells[0]).startswith("TUTTI i requisiti Allegato I soddisfatti?"):
             K.set_cell(t.rows[0].cells[0], "TUTTI i requisiti Allegato I soddisfatti? (≤ 1.000 m², ≤ 100 occupanti, quota tra -5 e +24 m, qf ≤ 900 MJ/m², nessuna sostanza e nessuna lavorazione pericolosa)")
+    # Classificazione PROVVISORIA: nessuna affermazione definitiva finché i dati decisivi non sono confermati
+    if n.get("provvisoria"):
+        ign = ", ".join(n["requisiti_ignoti"])
+        testo_prov = (f"CONCLUSIONE PROVVISORIA: nessun requisito dell'Allegato I risulta contraddetto dai dati disponibili, ma restano da confermare i requisiti {ign}. "
+                      "Se anche uno solo non fosse soddisfatto, la valutazione va redatta con il Codice di Prevenzione Incendi applicato integralmente.")
+        for t in b.doc.tables:
+            c0 = K.ctext(t.rows[0].cells[0])
+            if len(t.rows) == 1 and c0.startswith("CONCLUSIONE: tutti i requisiti"):
+                K.set_cell(t.rows[0].cells[0], testo_prov, fill=K.PENDING_FILL)
+            if len(t.rows) == 1 and c0.startswith("SI APPLICA L"):
+                K.set_cell(t.rows[0].cells[0], c0 + " (PROVVISORIO)")
+            if len(t.rows) == 2 and K.ctext(t.rows[0].cells[0]) == "Classificazione":
+                cs = K.uniq_cells(t.rows[1])
+                if len(cs) > 1 and "Tutti i requisiti" in K.ctext(cs[1]):
+                    K.set_cell(cs[1], f"PROVVISORIA — requisiti da confermare: {ign} (VRI-2.3). Nessun requisito contraddetto dai dati disponibili.", fill=K.PENDING_FILL)
+        caso.esito.setdefault("correzioni", [])
     # VRI-4 ---------------------------------------------------------------------
     b.attivita(); b.locali(); b.affollamento(); b.sostanze(); b.qf_area()
     # VRI-6 aree rischio specifico

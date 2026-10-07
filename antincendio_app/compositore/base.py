@@ -86,15 +86,22 @@ class Base:
         self.label_fill("DOCUMENTO", {"Data di emissione": nz(self.d("data_emissione"), oggi()), "Revisione": self.revisione_str()})
         self.label_fill("DVR GENERALE", {"Data ultima revisione DVR": self.d("dvr_data"), "Sezioni del DVR": self.d("dvr_sezioni"),
                                          "Piano di Emergenza collegato": self.d("pe_rif")})
-        # registro revisioni
-        for _, t in K.find_tables(self.doc, "Rev."):
-            hdr = [K.ctext(x) for x in K.uniq_cells(t.rows[0])]
-            if len(hdr) >= 4 and hdr[1] == "Data":
-                cs = K.uniq_cells(t.rows[1])
-                K.set_cell(cs[0], str(nz(self.d("revisione"), "00")).zfill(2))
-                K.set_cell(cs[1], nz(self.d("data_emissione"), oggi()))
-                if self.d("redatto_da") or self.d("rspp"):
-                    K.set_cell(cs[2], str(nz(self.d("redatto_da"), self.d("rspp"))))
+        # registro revisioni (storico completo se presente)
+        storico = self.d("storico_revisioni") or [{"rev": str(nz(self.d("revisione"), "00")).zfill(2), "data": nz(self.d("data_emissione"), oggi()),
+                                                    "redatto": nz(self.d("redatto_da"), self.d("rspp") or ""), "descrizione": "Prima stesura"}]
+        for t in self.doc.tables:
+            for h in (0, 1):
+                if h >= len(t.rows):
+                    continue
+                hdr = [K.ctext(x) for x in K.uniq_cells(t.rows[h])]
+                if len(hdr) >= 4 and hdr[0] == "Rev." and hdr[1] == "Data":
+                    K.ensure_rows(t, h + 1, len(storico))
+                    for i, rv in enumerate(storico, start=h + 1):
+                        cs = K.uniq_cells(t.rows[i])
+                        K.set_cell(cs[0], str(rv.get("rev", "")))
+                        K.set_cell(cs[1], str(rv.get("data", "")))
+                        K.set_cell(cs[2], str(rv.get("redatto") or "[Nome Cognome — RSPP]"))
+                        K.set_cell(cs[3], str(rv.get("descrizione", "")))
         # sottoscrizioni di copertina
         names = {"DATORE": self.d("datore_lavoro"), "RSPP": self.d("rspp"), "RLS": self.d("rls")}
         for _, t in K.find_tables(self.doc, "SOTTOSCRIZIONI"):

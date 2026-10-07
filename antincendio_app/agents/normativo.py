@@ -61,24 +61,26 @@ def qualifica(c: Caso) -> Caso:
     R_("D", "Attività non soggetta a controllo DPR 151/2011", "coerenza con A", "non soggetta" if not soggetta else "SOGGETTA", not soggetta)
     R_("RTV", "Assenza di RTV del Codice / regola tecnica di settore", "DM 3/9/2021 art. 2", "nessuna" if not (rtv or rts) else (rtv or rts), not (rtv or rts))
 
-    mancanti = [r for r in req if r["ok"] is None]
-    for r in mancanti:
-        c.add(AGENTE, "attenzione", f"Requisito {r['id']} «{r['testo']}» non verificabile: dato mancante. "
-              "Trattato come NON soddisfatto (cautelativo) fino a conferma.", "DM 3/9/2021 All. I")
-    tutti = all(r["ok"] is True for r in req)
-
+    falliti = [r for r in req if r["ok"] is False]
+    ignoti = [r for r in req if r["ok"] is None]
+    provvisoria = False
     if soggetta and rtv:
         ramo, descr = "A", "RAMO A — attività soggetta con RTV del Codice applicabile"
     elif rts:
         ramo, descr = "B", "RAMO B — regola tecnica di settore pre-Codice"
-    elif tutti:
-        ramo, descr = "MINICODICE", "RAMO C — requisiti dell'Allegato I al DM 3/9/2021 TUTTI soddisfatti: si applica il Minicodice (basso rischio)"
+    elif falliti:
+        ramo = "C"
+        descr = ("RAMO C — RTO residuale (DM 3/8/2015 sez. G e S): non soddisfatto/i " + ", ".join(f"{r['id']} ({r['testo'].lower()}: {r['valore']})" for r in falliti))
+    elif ignoti:
+        # nessun requisito è contraddetto dai dati: la scelta segue ciò che i dati sostengono, dichiarata PROVVISORIA
+        ramo, provvisoria = "MINICODICE", True
+        descr = ("PROVVISORIO — RAMO C, Minicodice: nessun requisito di basso rischio è contraddetto dai dati; da confermare: "
+                 + ", ".join(f"{r['id']} {r['testo'].lower()}" for r in ignoti) + ". Se anche uno solo non fosse soddisfatto si passa al Codice integrale.")
+        for r in ignoti:
+            c.add(AGENTE, "attenzione", f"Classificazione provvisoria: requisito {r['id']} «{r['testo']}» non verificabile dai dati. "
+                  "Inserirlo per confermare il percorso Minicodice (se non soddisfatto → Codice integrale).", "DM 3/9/2021 All. I")
     else:
-        ramo, descr = "C", "RAMO C — RTO residuale (DM 3/8/2015 sez. G e S): almeno un requisito di basso rischio non soddisfatto"
-    if c.get("eventi_intrattenimento") and "ristorazione" in tip:
-        c.add(AGENTE, "attenzione", "Ristorante con eventi: l'esclusione dal n. 65 (V.15.1 c.2 lett. b) vale solo senza ingresso a pagamento, pista da ballo, "
-              "palco/area spettatori, superficie al chiuso > 200 m², capienza > 100. Se l'attività reale supera il perimetro, aggiornare la VRI (art. 29 c.3 D.Lgs. 81/08) "
-              "e verificare l'assoggettamento al n. 65.", "Codice V.15.1; DPR 151/2011 n. 65")
+        ramo, descr = "MINICODICE", "RAMO C — requisiti dell'Allegato I al DM 3/9/2021 TUTTI soddisfatti: si applica il Minicodice (basso rischio)"
     RTV_HINT = {"ufficio": "uffici", "commercio": "attività commerciali", "ricettivo": "attività ricettive turistico-alberghiere",
                 "scuola": "attività scolastiche", "autorimessa": "autorimesse", "sanitario": "strutture sanitarie",
                 "spettacolo/intrattenimento": "locali di trattenimento e pubblico spettacolo (V.15)"}
@@ -86,6 +88,10 @@ def qualifica(c: Caso) -> Caso:
     if soggetta and hint and not rtv:
         c.add(AGENTE, "attenzione", "Per questa tipologia (" + ", ".join(hint) + ") il Codice prevede di norma una Regola Tecnica Verticale (Sezione V): "
               "indicare nel campo «RTV applicabile» quella pertinente alla voce di Allegato I, per passare al RAMO A.", "DM 3/9/2021 art. 2; Codice Sez. V")
+    if c.get("eventi_intrattenimento") and "ristorazione" in tip:
+        c.add(AGENTE, "attenzione", "Ristorante con eventi: l'esclusione dal n. 65 (V.15.1 c.2 lett. b) vale solo senza ingresso a pagamento, pista da ballo, "
+              "palco/area spettatori, superficie al chiuso > 200 m², capienza > 100. Se l'attività reale supera il perimetro, aggiornare la VRI (art. 29 c.3 D.Lgs. 81/08) "
+              "e verificare l'assoggettamento al n. 65.", "Codice V.15.1; DPR 151/2011 n. 65")
     if soggetta and ramo in ("MINICODICE", "C"):
         c.add(AGENTE, "critico", "Attività soggetta ai controlli VVF senza RTV/RT indicata: richiede il professionista antincendio "
               "iscritto agli elenchi del Ministero dell'Interno (progetto, SCIA, asseverazione). La VRI non li sostituisce.", "DPR 151/2011; D.Lgs. 139/2006")
@@ -101,7 +107,9 @@ def qualifica(c: Caso) -> Caso:
     c.esito["normativo"] = {
         "occupanti": occ, "superficie": sup, "soggetta_dpr151": soggetta, "fonte_assoggettamento": fonte,
         "screening": scr, "requisiti_allegato_I": req, "ramo": ramo, "ramo_descrizione": descr,
-        "template": template, "rischio_basso": basso,
+        "template": template, "rischio_basso": basso, "provvisoria": provvisoria,
+        "requisiti_ignoti": [r["id"] for r in ignoti], "requisiti_falliti": [r["id"] for r in falliti],
+        "alternativa": ("codice" if provvisoria else None),
         "formazione": R.formazione(basso, occ, speciale=bool(c.get("attivita_speciale")) or (soggetta and occ > 300)),
     }
     c.log.append(f"Normativo: {descr}; soggetta DPR151={soggetta}; template={template}")

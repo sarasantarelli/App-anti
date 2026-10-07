@@ -30,5 +30,5 @@ echo.
 call .venv\Scripts\python -m antincendio_app diagnostica
 echo.
 call CREA_COLLEGAMENTO.bat
-echo Installazione terminata. Avvia l'app dal collegamento sul Desktop (o con AVVIA.bat)
+echo Installazione terminata. Apri l'app dal collegamento sul Desktop
 pause

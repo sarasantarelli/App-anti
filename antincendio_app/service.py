@@ -145,6 +145,7 @@ def riepilogo(store: Store, pid: str) -> dict:
     voci = CL.estrai(docx.Document(str(CO.TPL / CO.FILES[tpl])), tpl)
     eff = caso.esito.get("risposte", {})
     tec = caso.esito.get("risposte_tecnico", {})
+    emis = emissioni(store, pid)
     voci_out = []
     for v in voci:
         e = eff.get(v.id, {})
@@ -159,13 +160,15 @@ def riepilogo(store: Store, pid: str) -> dict:
         "domande": caso.esito.get("domande", []),
         "sintesi": {
             "stato": caso.esito.get("stato", "BOZZA"), "template": tpl, "ramo": n["ramo_descrizione"], "soggetta_dpr151": n["soggetta_dpr151"],
-            "rischio_basso": n["rischio_basso"], "occupanti": n["occupanti"], "rvita": r["rvita"], "rbeni": r["rbeni"],
+            "rischio_basso": n["rischio_basso"], "provvisoria": n.get("provvisoria", False), "occupanti": n["occupanti"], "rvita": r["rvita"], "rbeni": r["rbeni"],
             "rambiente": r["rambiente_significativo"], "qf": r["qf"], "qf_fonte": r["qf_fonte"], "formazione": n["formazione"],
             "qfd": r.get("qfd"), "completezza": caso.esito.get("completezza"),
             "livelli": {str(k): v["livello"] for k, v in st.get("misure", {}).items()} if st.get("modo") == "codice" else {},
             "requisiti": n["requisiti_allegato_I"],
         },
         "voci": voci_out,
+        "emissioni": emis,
+        "revisione": caso.get("revisione") or "00",
         "azioni": caso.esito.get("azioni", []),
         "log": caso.log,
     }
@@ -178,9 +181,8 @@ def genera(store: Store, pid: str, pdf=True, tieni_guide=False) -> dict:
     from . import checklist as CL
     tpl = caso.esito["normativo"]["template"]
     voci = CL.estrai(docx.Document(str(CO.TPL / CO.FILES[tpl])), tpl)
-    out = store.path(pid) / "out"
-    if out.exists():
-        shutil.rmtree(out)
+    ver = f"Rev{str(caso.get('revisione') or '00').zfill(2)}_{time.strftime('%Y%m%d_%H%M%S')}"
+    out = store.path(pid) / "out" / ver
     res = CO.genera(caso, voci, caso.esito["risposte"], out, pdf=pdf, tieni_guide=tieni_guide)
     store.save(pid, caso)
     z = out / "Fascicolo_completo.zip"
@@ -189,4 +191,61 @@ def genera(store: Store, pid: str, pdf=True, tieni_guide=False) -> dict:
             if f != z and f.name != "caso.json":
                 zf.write(f, f.name)
     res["zip"] = z.name
+    res["versione"] = ver
+    (out / "emissione.json").write_text(json.dumps({"versione": ver, "quando": time.time(), "stato": res["stato"], "documenti": res["documenti"],
+                                                     "zip": z.name, "relazione": res["relazione"], "revisione": caso.get("revisione") or "00"}, ensure_ascii=False), encoding="utf-8")
     return res
+
+
+def emissioni(store: Store, pid: str) -> list[dict]:
+    base = store.path(pid) / "out"
+    out = []
+    if base.exists():
+        for d in sorted(base.iterdir(), reverse=True):
+            f = d / "emissione.json"
+            if d.is_dir() and f.exists():
+                try:
+                    out.append(json.loads(f.read_text(encoding="utf-8")))
+                except Exception:
+                    pass
+    return out
+
+
+def file_emissione(store: Store, pid: str, nome: str, ver: str | None = None) -> Path | None:
+    base = store.path(pid) / "out"
+    if ver:
+        f = base / Path(ver).name / Path(nome).name
+        return f if f.exists() else None
+    for e in emissioni(store, pid):          # più recente che contiene il file
+        f = base / e["versione"] / Path(nome).name
+        if f.exists():
+            return f
+    return None
+
+
+def nuova_revisione(store: Store, pid: str, descrizione: str) -> Caso:
+    """Registra una nuova revisione (art. 29 c.3 D.Lgs. 81/08): incrementa il numero, aggiorna data e registro revisioni."""
+    caso = store.load(pid)
+    try:
+        n = int(float(caso.get("revisione") or 0)) + 1
+    except ValueError:
+        n = 1
+    oggi = time.strftime("%d/%m/%Y")
+    st = list(caso.get("storico_revisioni") or [])
+    if not st and caso.get("revisione") is not None:
+        st.append({"rev": str(caso.get("revisione")).zfill(2), "data": caso.get("data_emissione") or oggi, "redatto": caso.get("redatto_da") or caso.get("rspp") or "", "descrizione": "Prima stesura"})
+    st.append({"rev": str(n).zfill(2), "data": oggi, "redatto": caso.get("redatto_da") or caso.get("rspp") or "", "descrizione": descrizione or "Aggiornamento"})
+    caso.set("storico_revisioni", st); caso.set("revisione", str(n).zfill(2)); caso.set("data_emissione", oggi)
+    store.save(pid, caso)
+    return caso
+
+
+def duplica(store: Store, pid: str) -> str:
+    nuovo = store.new()
+    src, dst = store.path(pid), store.path(nuovo)
+    shutil.copytree(src / "input", dst / "input", dirs_exist_ok=True)
+    caso = store.load(pid)
+    caso.esito.pop("stato", None)
+    caso.set("ragione_sociale", f"{caso.get('ragione_sociale') or ''} (copia)".strip())
+    store.save(nuovo, caso)
+    return nuovo

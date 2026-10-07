@@ -41,8 +41,12 @@ def controlla(d, c, res, out):
     p = []
     n, r = c.esito["normativo"], c.esito["rischio"]
     req = n["requisiti_allegato_I"]
-    if (n["ramo"] == "MINICODICE") != (all(x["ok"] is True for x in req) and not d.get("rt_settore") and not d.get("rtv_applicabile")):
+    nessun_ko = not any(x["ok"] is False for x in req)
+    attesa = nessun_ko and not d.get("rt_settore") and not (n["soggetta_dpr151"] and d.get("rtv_applicabile"))
+    if (n["ramo"] == "MINICODICE") != attesa:
         p.append("ramo/requisiti incoerenti")
+    if n["ramo"] == "MINICODICE" and n["provvisoria"] != any(x["ok"] is None for x in req):
+        p.append("flag provvisoria incoerente")
     if not re.fullmatch(r"(A|B|Ci{1,3}|D|E)[1-4]", r["rvita"]): p.append(f"Rvita malformato {r['rvita']}")
     m = re.fullmatch(r"(A|B|Ci{1,3}|D|E)([1-4])", r["rvita"])
     if m and not R.rvita_ammesso(m.group(1), int(m.group(2))): p.append(f"Rvita non ammesso {r['rvita']}")

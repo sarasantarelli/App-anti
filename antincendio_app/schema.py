@@ -116,5 +116,6 @@ TIPI = {k: t for k, _, t, _, _ in CAMPI}
 LISTE = {
     "locali": {"label": "Locali / aree (VRI-4.1)", "colonne": [("nome", "Locale/area", "text"), ("mq", "m²", "num"), ("dest", "Destinazione d'uso", "text"), ("tipo", "Tipologia (es. ufficio, ristorazione, ricettivo)", "text"), ("occ", "Occupanti", "num")]},
     "sostanze_dettaglio": {"label": "Materiali e sostanze per area (VRI-5)", "colonne": [("area", "Area", "text"), ("nome", "Sostanza/materiale", "text"), ("quantita", "Quantità", "text"), ("unita", "Unità", "text"), ("stoccaggio", "Stoccaggio", "text"), ("modalita", "Modalità d'uso", "text"), ("rilevanza", "Rilevanza (alta/media/bassa)", "text")]},
+    "storico_revisioni": {"label": "Registro delle revisioni", "colonne": [("rev", "Rev.", "text"), ("data", "Data", "text"), ("redatto", "Redatto da", "text"), ("descrizione", "Descrizione della modifica", "text")]},
     "addetti": {"label": "Addetti alle emergenze (PE-5.3)", "colonne": [("nome", "Nominativo", "text"), ("turno", "Turno/orario", "text"), ("coord", "Coord.", "bool"), ("ai", "A.I.", "bool"), ("ps", "P.S.", "bool"), ("ge", "G.E.", "bool"), ("as", "A.S.", "bool"), ("tel", "Telefono", "text")]},
 }

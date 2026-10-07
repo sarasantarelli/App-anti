@@ -45,7 +45,7 @@ def compila(caso, voci, risposte, out, tieni_guide=False):
                     K.choose(cs[2], "Soddisfatto")
                 elif q["ok"] is False:
                     K.choose(cs[2], "NON soddisfatto"); K.shade(cs[2], K.NC_FILL)
-                K.set_cell(cs[1], f"{q['soglia']} — rilevato: {q['valore']}")
+                K.set_cell(cs[1], f"{q['soglia']} — rilevato: {q['valore']}" if q["ok"] is not None else f"{q['soglia']} — dato mancante: da verificare")
     ko = [f"{q['id']} {q['testo']} ({q['valore']}, soglia {q['soglia']})" for q in n["requisiti_allegato_I"] if q["ok"] is not True and q["id"] not in ("RTV",)]
     b.par_fill("[Requisito/i non soddisfatto/i]", ["Requisiti non soddisfatti: " + "; ".join(ko) if ko else "nessuno"])
     b.par_replace("[Requisito/i non soddisfatto/i]", "Requisiti non soddisfatti: " + ("; ".join(ko) if ko else "nessuno (verificare dati mancanti)"))

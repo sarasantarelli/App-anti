@@ -34,6 +34,18 @@ documenti, foto, video del cliente ──► LETTURA ─► ESTRAZIONE (dato + f
 - La VRI **non sostituisce** progetto, SCIA o asseverazione del professionista antincendio: se l'attività è soggetta, il documento lo dichiara.
 - Firme (DdL, RSPP, RLS) e responsabilità restano delle persone. Ogni dato ha la sua fonte; la *Relazione di controllo* ricostruisce il ragionamento.
 
+## Come sceglie il modello (nessun «non basso» di default)
+L'app **analizza il caso e poi sceglie**: attività soggetta ai controlli VVF → *Raccordo con la pratica*; altrimenti verifica i requisiti dell'Allegato I
+(occupanti, superficie, quote, qf, sostanze, lavorazioni, RTV): tutti soddisfatti → *Minicodice*; anche uno solo contraddetto → *Codice integrale*.
+Se un dato manca e nessun requisito è contraddetto, la scelta è **provvisoria** (Minicodice) e il documento non afferma «tutti i requisiti soddisfatti»:
+dice quali dati servono per confermarla.
+
+## Gestionale: sempre acceso, sempre salvato, aggiornabile
+- **Collegamento sul Desktop** (`CREA_COLLEGAMENTO.bat`): un clic apre una finestra dedicata, senza finestra nera; il server resta in background (opzione: avvio automatico con Windows). `FERMA.bat` lo spegne.
+- **Salvataggio continuo:** ogni campo e ogni esito del sopralluogo si salva subito; backup completo automatico ogni giorno (ultimi 14) in `backup/`, ripristinabile dalla scheda **Sistema**.
+- **Storico:** ogni emissione dei documenti resta archiviata con la sua revisione; «Nuova revisione» aggiorna il registro delle revisioni (art. 29 c.3 D.Lgs. 81/08); «Duplica pratica» per l'aggiornamento annuale.
+- **Aggiornamento:** scheda **Sistema → Aggiorna** (da internet o da file ZIP): sostituisce solo il programma, pratiche, norme e template restano intatti; l'app si riavvia da sola.
+
 ## Uso sul PC (Windows: nessuna competenza tecnica)
 1. Scarica/copia la cartella del progetto sul PC (es. `C:\App-anti`).
 2. **Doppio clic su `INSTALLA.bat`** (una volta: crea l'ambiente Python, installa i componenti, propone LibreOffice per i PDF).

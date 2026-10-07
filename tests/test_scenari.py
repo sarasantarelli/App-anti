@@ -36,3 +36,27 @@ def test_minicodice_usa_valori_fissi(tmp_path):
     c, _ = esegui_tutto(d, [], tmp_path, pdf=False)
     dim = c.esito["dimensionamento"]
     assert dim["modo"] == "minicodice" and dim["les_max"] == 60 and dim["lcc_max"] == 15 and dim["uscite_min"] == 2   # sup > 150 m²
+
+
+def test_percorso_scelto_dai_dati_non_assunto(tmp_path):
+    from antincendio_app.coordinatore import esegui_tutto
+    base = dict(ragione_sociale="Q", indirizzo="V", datore_lavoro="A", rspp="B", superficie_mq=300, occupanti_lavoratori=5, tipologia_attivita=["ufficio"], qf_mj_m2=300)
+    # dati mancanti (quote, sostanze, lavorazioni): nessun requisito contraddetto -> Minicodice PROVVISORIO, non «non basso» di default
+    c, _ = esegui_tutto(base, [], tmp_path / "a", pdf=False)
+    n = c.esito["normativo"]
+    assert n["template"] == "minicodice" and n["provvisoria"] is True and set(n["requisiti_ignoti"]) == {"C.c", "C.e", "C.f"}
+    # con i dati completi la scelta diventa definitiva
+    c, _ = esegui_tutto(dict(base, quota_min=0, quota_max=3, sostanze_significative=False, lavorazioni_pericolose=False), [], tmp_path / "b", pdf=False)
+    assert c.esito["normativo"]["template"] == "minicodice" and c.esito["normativo"]["provvisoria"] is False
+    # un requisito contraddetto -> Codice integrale (definitivo)
+    c, _ = esegui_tutto(dict(base, sostanze_significative=True), [], tmp_path / "c", pdf=False)
+    assert c.esito["normativo"]["template"] == "codice" and c.esito["normativo"]["requisiti_falliti"] == ["C.e"]
+    # attivita soggetta -> raccordo
+    c, _ = esegui_tutto(dict(base, tipologia_attivita=["commercio"], superficie_mq=600, occupanti_terzi=30), [], tmp_path / "d", pdf=False)
+    assert c.esito["normativo"]["template"] == "raccordo"
+    # il documento provvisorio non afferma «tutti i requisiti soddisfatti»
+    import docx
+    c, res = esegui_tutto(base, [], tmp_path / "e", pdf=False)
+    d = docx.Document(str(tmp_path / "e" / res["documenti"][0]["file"]))
+    t = "\n".join(p.text for tb in d.tables for r in tb.rows for cl in r.cells for p in cl.paragraphs)
+    assert "CONCLUSIONE PROVVISORIA" in t and "CONCLUSIONE: tutti i requisiti" not in t
