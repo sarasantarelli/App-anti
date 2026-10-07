@@ -160,8 +160,21 @@ def screening_dpr151(c: dict) -> list[dict]:
     tip = set(c.get("tipologie", []))
     def add(n, d, soglia, val, sopra):
         r.append({"voce": n, "descrizione": d, "soglia": soglia, "valore": val, "esito": "SOPRA" if sopra else "sotto"})
+    ev = c.get("eventi") or {}
     if "spettacolo/intrattenimento" in tip:
         add(65, "Locali di spettacolo e trattenimento", ">100 persone o >200 m²", f"{occ:g} p / {sup:g} m²", occ > 100 or sup > 200)
+    elif ev.get("intrattenimento") and ({"ristorazione"} & tip):
+        # V.15.1 c.2 lett. b: esclusi gli esercizi pubblici con musica senza spazi/allestimenti dedicati; discriminanti per il n. 65
+        if ev.get("solo_aperto"):
+            r.append({"voce": 65, "descrizione": "Locali di trattenimento — esclusi: manifestazioni temporanee all'aperto", "soglia": "n. 65: esclude le manifestazioni temporanee in luoghi aperti",
+                      "valore": "solo all'aperto", "esito": "sotto"})
+        else:
+            motivi = [m for m, v in (("ingresso a pagamento", ev.get("pagamento")), ("pista da ballo/attività danzanti", ev.get("pista")),
+                                     ("palco/area spettatori strutturata", ev.get("palco")), ("superficie al chiuso > 200 m²", sup > 200),
+                                     ("capienza > 100 persone", occ > 100)) if v]
+            r.append({"voce": 65, "descrizione": "Locali di trattenimento e pubblico spettacolo (ristorante con eventi)",
+                      "soglia": "discriminanti: pagamento, pista, palco, >200 m², >100 persone (V.15.1 c.2 lett. b)",
+                      "valore": ", ".join(motivi) if motivi else "nessuna discriminante", "esito": "SOPRA" if motivi else "sotto"})
     if "ricettivo" in tip:
         add(66, "Strutture ricettive turistico-alberghiere", ">25 posti letto", c.get("posti_letto", "n.d."), (c.get("posti_letto") or 0) > 25)
     if "scuola" in tip:

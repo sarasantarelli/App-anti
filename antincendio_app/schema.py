@@ -19,6 +19,12 @@ CAMPI = [
     ("fuori_orario", "Presenza fuori orario presidiato (pulizie, ricariche, sistemi automatici)", "text", "Attività", ""),
     ("variabilita", "Variabilità stagionale o per commessa", "text", "Attività", ""),
     ("aperta_pubblico", "Attività aperta al pubblico", "bool", "Attività", ""),
+    ("eventi_intrattenimento", "Si svolgono eventi/intrattenimento (musica dal vivo, DJ, karaoke, spettacoli)", "bool", "Attività", "Ristoranti/bar: vedi V.15.1 c.2 lett. b e n. 65 DPR 151"),
+    ("ingresso_pagamento", "Ingresso a pagamento agli eventi", "bool", "Attività", ""),
+    ("pista_ballo", "Pista da ballo allestita / attività danzanti", "bool", "Attività", ""),
+    ("palco_spettatori", "Palco o area spettatori strutturata", "bool", "Attività", ""),
+    ("eventi_solo_aperto", "Eventi solo temporanei all'aperto (non in locale chiuso)", "bool", "Attività", "Esclusi dal n. 65 se manifestazioni temporanee"),
+    ("attivita_speciale", "Attività «speciale» ai fini della formazione (livello 3)", "bool", "Documento", "Es. grandi affollamenti/attività complesse: forza il Livello 3"),
     ("confini", "Confini e interferenze (compartimentazioni, attività limitrofe)", "area", "Attività", ""),
     ("superficie_mq", "Superficie lorda complessiva [m²]", "num", "Dimensioni", "Da rilievo/planimetria"),
     ("piani_n", "Numero di piani", "num", "Dimensioni", ""),
@@ -108,7 +114,7 @@ TIPI = {k: t for k, _, t, _, _ in CAMPI}
 
 # liste strutturate (editor a tabella nell'interfaccia)
 LISTE = {
-    "locali": {"label": "Locali / aree (VRI-4.1)", "colonne": [("nome", "Locale/area", "text"), ("mq", "m²", "num"), ("dest", "Destinazione d'uso", "text"), ("occ", "Occupanti", "num")]},
+    "locali": {"label": "Locali / aree (VRI-4.1)", "colonne": [("nome", "Locale/area", "text"), ("mq", "m²", "num"), ("dest", "Destinazione d'uso", "text"), ("tipo", "Tipologia (es. ufficio, ristorazione, ricettivo)", "text"), ("occ", "Occupanti", "num")]},
     "sostanze_dettaglio": {"label": "Materiali e sostanze per area (VRI-5)", "colonne": [("area", "Area", "text"), ("nome", "Sostanza/materiale", "text"), ("quantita", "Quantità", "text"), ("unita", "Unità", "text"), ("stoccaggio", "Stoccaggio", "text"), ("modalita", "Modalità d'uso", "text"), ("rilevanza", "Rilevanza (alta/media/bassa)", "text")]},
     "addetti": {"label": "Addetti alle emergenze (PE-5.3)", "colonne": [("nome", "Nominativo", "text"), ("turno", "Turno/orario", "text"), ("coord", "Coord.", "bool"), ("ai", "A.I.", "bool"), ("ps", "P.S.", "bool"), ("ge", "G.E.", "bool"), ("as", "A.S.", "bool"), ("tel", "Telefono", "text")]},
 }

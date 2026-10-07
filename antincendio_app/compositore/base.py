@@ -377,6 +377,27 @@ class Base:
                     for p in c.paragraphs:
                         fix(p)
 
+    def applica_correzioni(self, regole: list[tuple[str, str, str]]):
+        """regole: (testo_errato, testo_corretto, motivo). Registra ogni correzione in esito['correzioni'] per la revisione del tecnico."""
+        reg = self.c.esito.setdefault("correzioni", [])
+        def fix(p):
+            for r in p.runs:
+                for a, b, why in regole:
+                    if a in r.text:
+                        r.text = r.text.replace(a, b)
+                        item = {"documento": self.nome_doc, "prima": a, "dopo": b, "motivo": why}
+                        if item not in reg:
+                            reg.append(item)
+        for p in self.doc.paragraphs:
+            fix(p)
+        for t in self.doc.tables:
+            for row in t.rows:
+                for c in K.uniq_cells(row):
+                    for p in c.paragraphs:
+                        fix(p)
+
+    nome_doc = "documento"
+
     def pulisci_vuoti(self):
         for t in self.doc.tables:
             for row in t.rows:

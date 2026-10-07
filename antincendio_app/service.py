@@ -36,7 +36,31 @@ class Store:
         return Caso.from_dict(json.loads(f.read_text(encoding="utf-8")))
 
     def save(self, pid, caso: Caso):
-        (self.path(pid) / "caso.json").write_text(json.dumps(caso.to_dict(), ensure_ascii=False, default=str), encoding="utf-8")
+        d = self.path(pid)
+        (d / "caso.json").write_text(json.dumps(caso.to_dict(), ensure_ascii=False, default=str), encoding="utf-8")
+        meta = {"id": pid, "nome": caso.get("ragione_sociale") or "(senza nome)", "stato": caso.esito.get("stato", "BOZZA"),
+                "ramo": caso.esito.get("normativo", {}).get("template"), "aggiornato": time.time(),
+                "completezza": (caso.esito.get("completezza") or {}).get("percento")}
+        (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+
+    def elenco(self) -> list[dict]:
+        out = []
+        for d in self.base.iterdir():
+            if not (d.is_dir() and (d / "caso.json").exists()):
+                continue
+            try:
+                m = json.loads((d / "meta.json").read_text(encoding="utf-8")) if (d / "meta.json").exists() else None
+            except Exception:
+                m = None
+            if m is None:
+                c = Caso.from_dict(json.loads((d / "caso.json").read_text(encoding="utf-8")))
+                m = {"id": d.name, "nome": c.get("ragione_sociale") or "(senza nome)", "stato": c.esito.get("stato", "BOZZA"),
+                     "ramo": c.esito.get("normativo", {}).get("template"), "aggiornato": d.stat().st_mtime, "completezza": None}
+            out.append(m)
+        return sorted(out, key=lambda x: -x.get("aggiornato", 0))
+
+    def elimina(self, pid):
+        shutil.rmtree(self.path(pid), ignore_errors=True)
 
     def cleanup(self):
         if RETENTION_H <= 0:

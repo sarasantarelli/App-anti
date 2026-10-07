@@ -34,6 +34,7 @@ def leggi_documenti(caso: Caso, percorsi: list[str | Path]) -> Caso:
 def analizza(caso: Caso, risposte: dict | None = None) -> tuple[Caso, list, dict]:
     """Esegue gli agenti di analisi. Ritorna (caso, voci_checklist, risposte_effettive)."""
     caso.findings = [f for f in caso.findings if f.agente in ("Lettura", "Estrazione")]
+    caso.esito.pop("correzioni", None)
     caso.esito.pop("azioni_extra", None)
     if caso.evidenze:
         estrazione.estrai(caso)
@@ -115,6 +116,9 @@ def relazione(caso: Caso, res: dict) -> str:
     L += ["", "## Rilievi degli agenti", ""]
     for f in caso.findings:
         L.append(f"- [{f.livello.upper()}] ({f.agente}) {f.messaggio}" + (f" — _{f.riferimento}_" if f.riferimento else ""))
+    corr = caso.esito.get("correzioni", [])
+    if corr:
+        L += ["", "## Correzioni applicate ai template (da rivedere)", ""] + [f"- {c['documento']}: «{c['prima']}» → «{c['dopo']}» — {c['motivo']}" for c in corr]
     L += ["", "## Domande aperte", ""] + [f"- ({d['gravita']}) {d['domanda']}" for d in caso.esito.get("domande", [])]
     L += ["", "## Documenti generati", ""]
     for d in res["documenti"]:

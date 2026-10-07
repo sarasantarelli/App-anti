@@ -36,20 +36,37 @@ def _qf(c: Caso):
     return None, "non determinabile", "n.d."
 
 
+SEV = {"A": 0, "B": 1, "E": 1, "Ci": 2, "Cii": 2, "Ciii": 2.5, "D": 3}
+
+
+def _docc(tip, pubblico, posti_letto):
+    if "ricettivo" in tip:
+        return "Ciii", "occupanti possibilmente addormentati, gestione di breve durata (ricettivo)"
+    if "sanitario" in tip and posti_letto > 0:
+        return "D", "occupanti che ricevono cure mediche con degenza"
+    if pubblico or {"ristorazione", "commercio", "spettacolo/intrattenimento"} & set(tip):
+        return "B", "occupanti in veglia NON familiari con i luoghi (pubblico/terzi)"
+    return "A", "occupanti in veglia familiari con i luoghi (solo lavoratori)"
+
+
 def profili(c: Caso) -> Caso:
     c.findings = [f for f in c.findings if f.agente != AGENTE]
     tip = c.get("tipologia_attivita", []) or []
     sost = set(c.get("sostanze", []) or [])
     pubblico = bool(c.get("aperta_pubblico")) or float(c.get("occupanti_terzi", 0) or 0) > 0
     # δocc ------------------------------------------------------------
-    if "ricettivo" in tip:
-        docc, mot = "Ciii", "occupanti possibilmente addormentati, gestione di breve durata (ricettivo)"
-    elif "sanitario" in tip and float(c.get("posti_letto", 0) or 0) > 0:
-        docc, mot = "D", "occupanti che ricevono cure mediche con degenza"
-    elif pubblico:
-        docc, mot = "B", "occupanti in veglia NON familiari con i luoghi (presenza di pubblico/terzi)"
-    else:
-        docc, mot = "A", "occupanti in veglia familiari con i luoghi (solo lavoratori)"
+    pl = float(c.get("posti_letto", 0) or 0)
+    docc, mot = _docc(tip, pubblico, pl)
+    # più destinazioni d'uso: Rvita per ciascun locale; il profilo più elevato governa la strategia
+    locali = [l for l in (c.get("locali") or []) if l.get("tipo")]
+    loc_docc = []
+    for l in locali:
+        d_, m_ = _docc([str(l["tipo"]).strip().lower()], pubblico, pl)
+        loc_docc.append((l.get("nome") or "—", d_, m_))
+    if loc_docc:
+        best = max(loc_docc, key=lambda x: SEV[x[1]])
+        if SEV[best[1]] > SEV[docc] or not tip:
+            docc, mot = best[1], f"profilo più elevato tra le destinazioni d'uso (locale «{best[0]}»): {best[2]}"
     # qf ------------------------------------------------------------------
     qf, qf_fonte, qf_tipo = _qf(c)
     # δα (cautelativo, Tab. G.3-2) ---------------------------------------------
@@ -75,6 +92,10 @@ def profili(c: Caso) -> Caso:
                 "riducibile se l'attività è servita da controllo dell'incendio/rivelazione adeguati — da motivare).")
         c.add(AGENTE, "attenzione", nota, "Codice Tab. G.3-1 nota [1]")
     rvita = R.rvita_str(docc, dalfa)
+    rvita_locali = []
+    for nm, d_, m_ in loc_docc:
+        da = dalfa if R.rvita_ammesso(d_, dalfa) else (2 if d_ == "D" else 3)
+        rvita_locali.append({"nome": nm, "rvita": R.rvita_str(d_, da), "motivo": f"δocc {d_} ({m_}); δα {da}"})
     if c.get("rvita_override"):
         rvita = str(c.get("rvita_override"))
     # Rbeni / Rambiente ------------------------------------------------------
@@ -101,7 +122,7 @@ def profili(c: Caso) -> Caso:
     else:
         qfd_info = None
     c.esito["rischio"] = {
-        "docc": docc, "docc_motivo": mot, "dalfa": dalfa, "dalfa_motivo": dm, "rvita": rvita, "rvita_nota": nota,
+        "docc": docc, "docc_motivo": mot, "rvita_locali": rvita_locali, "dalfa": dalfa, "dalfa_motivo": dm, "rvita": rvita, "rvita_nota": nota,
         "rbeni": rbeni, "vincolata": vinc, "strategica": strat,
         "rambiente_condizioni": rambiente, "rambiente_significativo": ramb_sign,
         "qf": qf, "qf_fonte": qf_fonte, "qf_tipo": qf_tipo, "qfd": qfd_info,

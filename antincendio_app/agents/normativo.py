@@ -24,7 +24,9 @@ def qualifica(c: Caso) -> Caso:
         "occupanti": occ, "superficie": sup, "tipologie": tip, "posti_letto": c.get("posti_letto"),
         "kg_carta": c.get("kg_carta"), "kg_legno": c.get("kg_legno"), "kg_plastica": c.get("kg_plastica"),
         "kg_combustibili": sum(float(c.get(k, 0) or 0) for k in ("kg_carta", "kg_legno", "kg_plastica")),
-        "litri_infiammabili": c.get("litri_infiammabili"), "kw_termico": c.get("kw_termico"), "quota_max": qmax})
+        "litri_infiammabili": c.get("litri_infiammabili"), "kw_termico": c.get("kw_termico"), "quota_max": qmax,
+        "eventi": {"intrattenimento": c.get("eventi_intrattenimento"), "pagamento": c.get("ingresso_pagamento"), "pista": c.get("pista_ballo"),
+                   "palco": c.get("palco_spettatori"), "solo_aperto": c.get("eventi_solo_aperto")}})
     override = c.get("soggetta_dpr151")
     if override in (True, False, "si", "no", "Sì", "No"):
         soggetta = override in (True, "si", "Sì")
@@ -73,6 +75,10 @@ def qualifica(c: Caso) -> Caso:
         ramo, descr = "MINICODICE", "RAMO C — requisiti dell'Allegato I al DM 3/9/2021 TUTTI soddisfatti: si applica il Minicodice (basso rischio)"
     else:
         ramo, descr = "C", "RAMO C — RTO residuale (DM 3/8/2015 sez. G e S): almeno un requisito di basso rischio non soddisfatto"
+    if c.get("eventi_intrattenimento") and "ristorazione" in tip:
+        c.add(AGENTE, "attenzione", "Ristorante con eventi: l'esclusione dal n. 65 (V.15.1 c.2 lett. b) vale solo senza ingresso a pagamento, pista da ballo, "
+              "palco/area spettatori, superficie al chiuso > 200 m², capienza > 100. Se l'attività reale supera il perimetro, aggiornare la VRI (art. 29 c.3 D.Lgs. 81/08) "
+              "e verificare l'assoggettamento al n. 65.", "Codice V.15.1; DPR 151/2011 n. 65")
     RTV_HINT = {"ufficio": "uffici", "commercio": "attività commerciali", "ricettivo": "attività ricettive turistico-alberghiere",
                 "scuola": "attività scolastiche", "autorimessa": "autorimesse", "sanitario": "strutture sanitarie",
                 "spettacolo/intrattenimento": "locali di trattenimento e pubblico spettacolo (V.15)"}
@@ -96,7 +102,7 @@ def qualifica(c: Caso) -> Caso:
         "occupanti": occ, "superficie": sup, "soggetta_dpr151": soggetta, "fonte_assoggettamento": fonte,
         "screening": scr, "requisiti_allegato_I": req, "ramo": ramo, "ramo_descrizione": descr,
         "template": template, "rischio_basso": basso,
-        "formazione": R.formazione(basso, occ, speciale=soggetta and occ > 300),
+        "formazione": R.formazione(basso, occ, speciale=bool(c.get("attivita_speciale")) or (soggetta and occ > 300)),
     }
     c.log.append(f"Normativo: {descr}; soggetta DPR151={soggetta}; template={template}")
     return c

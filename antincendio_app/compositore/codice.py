@@ -128,6 +128,16 @@ def compila(caso, voci, risposte, out, tieni_guide=False):
     for _, t in K.find_tables(b.doc, "Locale/Area"):
         hdr = [K.ctext(x) for x in K.uniq_cells(t.rows[0])]
         if len(hdr) == 2 and hdr[1].startswith("Rvita adottato"):
+            rl = r.get("rvita_locali") or []
+            if rl:
+                K.ensure_rows(t, 1, len(rl) + 1)
+                for i, x in enumerate(rl, start=1):
+                    cs = K.uniq_cells(t.rows[i])
+                    K.set_cell(cs[0], x["nome"]); K.set_cell(cs[1], f"{x['rvita']} — {x['motivo']}")
+                cs = K.uniq_cells(t.rows[len(rl) + 1])
+                K.set_cell(cs[0], "ADOTTATO PER LA STRATEGIA (profilo più elevato)", bold=True)
+                K.set_cell(cs[1], f"{r['rvita']} — {r['docc_motivo']}; δα {r['dalfa']} ({r['dalfa_motivo']})", bold=True)
+                continue
             cs = K.uniq_cells(t.rows[1])
             K.set_cell(cs[0], "Intera attività")
             K.set_cell(cs[1], f"{r['rvita']} — δocc {r['docc']} ({r['docc_motivo']}); δα {r['dalfa']} ({r['dalfa_motivo']})")

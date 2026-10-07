@@ -103,8 +103,17 @@ def dimensiona(c: Caso, ctx: Ctx) -> dict:
     lit = float(c.get("litri_infiammabili", 0) or 0)
     d["estintori_B"] = R.estintori_b(lit)
     d["classe_F"] = bool(c.get("cucina_cottura"))
-    # Minicodice (Allegato I): 1 estintore ogni 500 m² (o frazione), distanza max 30 m, >=21A/55B
+    # Minicodice (Allegato I DM 3/9/2021): valori FISSI, non derivati da Rvita (come nelle prescrizioni del template VRI Minicodice)
     d["minicodice_estintori_n"] = max(piani, math.ceil(sup / 500)) if sup else None
+    if c.esito["normativo"]["ramo"] == "MINICODICE":
+        d["modo"] = "minicodice"
+        d["lcc_max"], d["lcc_max_occ"], d["les_max"] = 15, None, 60
+        d["uscite_min"] = 2 if (occ > 50 or sup > 150) else 1
+        d["lu_oriz"] = None
+        d["largh_min_mm"] = 900
+        d["lo_calcolata_mm"] = round(occ / 50 * 1000)           # affollamento / 50 persone per metro
+        d["lo_richiesta_mm"] = max(900, d["lo_calcolata_mm"])
+        d["estintori_A"] = {"dist_max": 30, "cap_A": 21, "n_min": d["minicodice_estintori_n"] or 1}
     return d
 
 

@@ -34,8 +34,19 @@ documenti, foto, video del cliente ──► LETTURA ─► ESTRAZIONE (dato + f
 - La VRI **non sostituisce** progetto, SCIA o asseverazione del professionista antincendio: se l'attività è soggetta, il documento lo dichiara.
 - Firme (DdL, RSPP, RLS) e responsabilità restano delle persone. Ogni dato ha la sua fonte; la *Relazione di controllo* ricostruisce il ragionamento.
 
+## Uso sul PC (Windows: nessuna competenza tecnica)
+1. Scarica/copia la cartella del progetto sul PC (es. `C:\App-anti`).
+2. **Doppio clic su `INSTALLA.bat`** (una volta: crea l'ambiente Python, installa i componenti, propone LibreOffice per i PDF).
+3. **Doppio clic su `AVVIA.bat`**: si apre il browser su http://localhost:8000. I dati restano nella cartella `data/` del PC; nulla esce dal computer.
+macOS/Linux: `./avvia.sh`. Controllo dell'installazione: `python -m antincendio_app diagnostica`.
+
+## Norme, libri di valutazione, dispense (scheda «Norme e libri»)
+Carica PDF/Word/TXT dalla scheda **Norme e libri** (o copiali in `norme/`). Vengono indicizzati una sola volta (i PDF scansionati con OCR) e usati per
+**citare file e pagina** nei rilievi della *Relazione di controllo* e per la ricerca a parole chiave. I valori di calcolo restano quelli dei template:
+se un libro contiene tabelle/regole da applicare, vanno trasferite nell'app (chiedilo: si codificano in `regole.py` con test).
+
 ## Uso
-**Web (consigliato):** `python -m antincendio_app serve` → http://localhost:8000 — carica i file, rivedi *Esito → Dati → Sopralluogo → Azioni → Documenti*.
+**Web:** `python -m antincendio_app serve` → http://localhost:8000 — carica i file, rivedi *Esito → Dati → Sopralluogo → Azioni → Documenti*.
 **Riga di comando:** `python -m antincendio_app genera ./cartella_cliente --dati dati.json --out ./out`
 **Audit dei template:** `python -m antincendio_app verifica-template` (vedi `docs/VERIFICA_TEMPLATE.md`)
 
@@ -63,4 +74,4 @@ sono **letti dal template**, quindi il comportamento segue le tue modifiche. Dop
 
 ## Struttura
 `antincendio_app/agents/` agenti · `compositore/` compilazione dei 4 template · `checklist.py` voci di verifica dai template ·
-`criteri.py` valutatore dei criteri S.x-2 · `regole.py` tabelle di calcolo · `web/` interfaccia · `tests/` 15 test.
+`criteri.py` valutatore dei criteri S.x-2 · `regole.py` tabelle di calcolo · `web/` interfaccia · `scripts/sweep.py` giro di prove su scenari sintetici (`python scripts/sweep.py 120 7`) · `tests/` test automatici.

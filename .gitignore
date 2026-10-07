@@ -5,3 +5,4 @@ out/
 data/
 *.egg-info/
 .venv/
+norme/.indice/

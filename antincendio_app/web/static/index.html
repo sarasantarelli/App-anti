@@ -55,9 +55,11 @@ a.dl.big{background:var(--red);color:#fff;border-color:var(--red)}
   <input id="fi" type="file" multiple class="hide">
   <p><button class="p" id="go">Avvia analisi</button></p>
 </section>
+<section id="recenti" class="card hide"><h2>Pratiche salvate su questo PC</h2><div id="rl"></div></section>
+<section id="diag" class="card hide"></section>
 <section id="work" class="hide">
  <nav class="tabs" id="tabs"></nav>
- <div id="t-esito"></div><div id="t-dati" class="hide"></div><div id="t-sopr" class="hide"></div><div id="t-azioni" class="hide"></div><div id="t-doc" class="hide"></div>
+ <div id="t-esito"></div><div id="t-dati" class="hide"></div><div id="t-sopr" class="hide"></div><div id="t-azioni" class="hide"></div><div id="t-doc" class="hide"></div><div id="t-norme" class="hide"></div>
 </section>
 </main>
 <script>
@@ -77,10 +79,10 @@ $('#nuova').onclick=()=>{location.hash='';location.reload()};
 async function init(){SCHEMA=SCHEMA||await api('/api/schema');$('#home').classList.add('hide');$('#work').classList.remove('hide');$('#nuova').classList.remove('hide');draw()}
 function setR(j){R=j;head();if(tab==='esito')drawEsito();if(tab==='azioni')drawAzioni()}
 function head(){const s=R.sintesi,b=$('#stato');b.classList.remove('hide','b-ok','b-bozza');b.textContent=s.stato;b.classList.add(s.stato.startsWith('PRONTO')?'b-ok':'b-bozza')}
-function draw(){head();const T=[['esito','Esito'],['dati','Dati'],['sopr','Sopralluogo'],['azioni','Azioni correttive'],['doc','Documenti']];
+function draw(){head();const T=[['esito','Esito'],['dati','Dati'],['sopr','Sopralluogo'],['azioni','Azioni correttive'],['doc','Documenti'],['norme','Norme e libri']];
  const n=$('#tabs');n.innerHTML='';T.forEach(([k,l])=>{const b=E('button',{textContent:l});b.className=k===tab?'on':'';b.onclick=()=>{tab=k;draw()};n.append(b)});
  T.forEach(([k])=>$('#t-'+k).classList.toggle('hide',k!==tab));
- ({esito:drawEsito,dati:drawDati,sopr:drawSopr,azioni:drawAzioni,doc:drawDoc})[tab]()}
+ ({esito:drawEsito,dati:drawDati,sopr:drawSopr,azioni:drawAzioni,doc:drawDoc,norme:drawNorme})[tab]()}
 function drawEsito(){const s=R.sintesi,c=s.completezza||{percento:0,voci:0,risposte:0};
  const q=s.qfd;let h=`<div class="card"><h2>Esito dell'analisi</h2><p><b>${esc(s.ramo)}</b></p><div class="kpi">
  <div><b>${s.rischio_basso?'BASSO':'NON BASSO'}</b><span>classificazione (DM 2/9/2021)</span></div>
@@ -145,6 +147,23 @@ function drawDoc(){const s=R.sintesi;$('#t-doc').innerHTML=`<div class="card"><h
   const u=n=>`/api/pratiche/${PID}/download/${encodeURIComponent(n)}`;let h='';
   j.documenti.forEach(d=>{h+=`<div class="card"><b>${esc(d.tipo)}</b> — campi da completare: <b>${d.campi_da_completare}</b> ${d.verifica.length?`<div class="warn">${esc(d.verifica.join('; '))}</div>`:''}<br><a class="dl big" href="${u(d.file)}">Word modificabile (.docx)</a>${d.pdf?`<a class="dl" href="${u(d.pdf)}">PDF</a>`:''}</div>`});
   h+=`<a class="dl" href="${u(j.relazione)}">Relazione di controllo (tracciabilità)</a><a class="dl big" href="${u(j.zip)}">Fascicolo completo (.zip)</a>`;$('#out').innerHTML=h}catch(e){alert(e.message)}finally{$('#gen').disabled=false;$('#gen').textContent='Genera Word + PDF'}}}
+async function drawNorme(){const j=await api('/api/norme/elenco');let h=`<div class="card"><h2>Norme, libri di valutazione, dispense</h2>
+ <p class="mut">Carica qui i testi (PDF, Word, TXT): D.Lgs. 81/08, DM 3/8/2015, DM 1-2-3/9/2021, DPR 151/2011, regole tecniche, manuali VVF, libri di valutazione. Restano <b>su questo PC</b>. Vengono indicizzati una volta sola (i PDF scansionati con OCR: più lento) e usati per: <b>citare file e pagina</b> nei rilievi della Relazione di controllo e per la ricerca qui sotto.</p>
+ <div id="ndrop" class="drop">Trascina qui i file oppure clicca<br><small class="mut">anche libri di centinaia di pagine</small></div><input id="nfi" type="file" multiple class="hide" accept=".pdf,.docx,.txt,.md"></div>
+ <div class="card"><h2>Documenti caricati</h2>${j.documenti.length?`<table><tr><th>File</th><th>MB</th><th>Pagine</th><th>Passi</th><th>Stato</th><th></th></tr>${j.documenti.map(d=>`<tr><td>${esc(d.file)}</td><td>${d.mb}</td><td>${d.pagine??'—'}</td><td>${d.passaggi}</td><td>${d.errore?'errore: '+esc(d.errore):d.in_corso?'indicizzazione…':d.indicizzato?'✓ indicizzato':'in attesa'}</td><td><button class="s" onclick="delNorma('${esc(d.file)}')">Rimuovi</button></td></tr>`).join('')}</table>`:'<span class="mut">Nessun documento: l\'app lavora con le sole tabelle dei template.</span>'}
+ ${j.stato.in_corso.length?'<p class="warn">Indicizzazione in corso… <button class="s" onclick="drawNorme()">Aggiorna</button></p>':''}</div>
+ <div class="card"><h2>Cerca nel corpus</h2><div class="row"><input type="text" id="nq" placeholder="es. estintori classe F cucine · carico d'incendio 900 MJ/m² · addetti antincendio livello 2" style="flex:1"><button class="p" id="nb">Cerca</button></div><div id="nr" style="margin-top:10px"></div></div>`;
+ $('#t-norme').innerHTML=h;const dz=$('#ndrop');dz.onclick=()=>$('#nfi').click();
+ const up=async fl=>{const fd=new FormData();[...fl].forEach(f=>fd.append('files',f));dz.textContent='Caricamento…';try{await api('/api/norme/upload',{method:'POST',body:fd})}catch(e){alert(e.message)}drawNorme();setTimeout(()=>tab==='norme'&&drawNorme(),4000)};
+ $('#nfi').onchange=e=>up(e.target.files);dz.ondragover=e=>{e.preventDefault();dz.classList.add('over')};dz.ondragleave=()=>dz.classList.remove('over');dz.ondrop=e=>{e.preventDefault();up(e.dataTransfer.files)};
+ const go=async()=>{const q=$('#nq').value.trim();if(!q)return;const r=await api('/api/norme?q='+encodeURIComponent(q)+'&n=6');$('#nr').innerHTML=r.length?r.map(x=>`<div class="f"><b>${esc(x.file)}</b> · p.${x.pagina}<br>${esc(x.testo)}…</div>`).join(''):'<span class="mut">Nessun risultato (carica documenti o riformula).</span>'};
+ $('#nb').onclick=go;$('#nq').onkeydown=e=>{if(e.key==='Enter')go()}}
+async function delNorma(n){if(confirm('Rimuovere '+n+'?')){await api('/api/norme/'+encodeURIComponent(n),{method:'DELETE'});drawNorme()}}
+async function home(){try{const L=await api('/api/pratiche');if(L.length){$('#recenti').classList.remove('hide');$('#rl').innerHTML=`<table><tr><th>Cliente</th><th>Modello</th><th>Stato</th><th>Sopralluogo</th><th>Aggiornata</th><th></th></tr>${L.map(x=>`<tr><td><b>${esc(x.nome)}</b></td><td>${esc({minicodice:'Minicodice',codice:'Codice integrale',raccordo:'Raccordo VVF'}[x.ramo]||'—')}</td><td>${esc(x.stato)}</td><td>${x.completezza??'—'}${x.completezza!=null?'%':''}</td><td>${new Date(x.aggiornato*1000).toLocaleString('it-IT')}</td><td><button class="s" onclick="apri('${x.id}')">Apri</button> <button class="s" onclick="eli('${x.id}')">Elimina</button></td></tr>`).join('')}</table>`}}catch(e){}
+ try{const D=await api('/api/diagnostica');const bad=D.filter(x=>!x.ok);if(bad.length){$('#diag').classList.remove('hide');$('#diag').innerHTML='<h2>Componenti opzionali mancanti</h2>'+bad.map(x=>`<div class="f ${x.obbligatorio?'critico':'attenzione'}"><b>${esc(x.nome)}</b>: ${esc(x.dettaglio)}<br><small>${esc(x.rimedio)}</small></div>`).join('')}}catch(e){}}
+async function apri(id){PID=id;location.hash=id;R=await api('/api/pratiche/'+id);await init()}
+async function eli(id){if(confirm('Eliminare definitivamente questa pratica e i suoi file?')){await api('/api/pratiche/'+id,{method:'DELETE'});home()}}
+home();
 if(PID){api('/api/pratiche/'+PID).then(j=>{R=j;init()}).catch(()=>{location.hash='';PID=''})}
 </script>
 </body>

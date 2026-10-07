@@ -9,6 +9,23 @@ from .base import Base, nz, fmt_num
 TEMPLATE = Path(__file__).resolve().parents[2] / "templates" / "Piano_di_Emergenza_standalone_v12_1.docx"
 
 
+# Rimandi incrociati del template PE non allineati alla numerazione delle VRI (vedi docs/VERIFICA_TEMPLATE.md)
+CORREZIONI_PE = [
+    ("soglie VRI §1.1", "soglie VRI-2 e VRI-4.2", "rimando a sezione inesistente: le soglie sono in VRI-2 (requisiti) e VRI-4.2 (affollamento)"),
+    ("limiti VRI §1.1", "limiti VRI-4.2", "rimando a sezione inesistente: l'affollamento è in VRI-4.2"),
+    ("VRI §1.1/§1.3", "VRI-4.1 e VRI-6", "rimando a sezioni inesistenti: aree in VRI-4.1, aree a rischio specifico in VRI-6"),
+    ("VRI §1.3", "VRI-6", "rimando a sezione inesistente: aree a rischio specifico in VRI-6"),
+    ("schema VRI Cap. 5, DM 1/9/2021", "registro dei controlli secondo DM 1/9/2021 e VRI-9", "rimando a «Cap. 5» inesistente"),
+    ("sorgenti di innesco ()", "sorgenti di innesco (VRI-7)", "riferimento vuoto «()»"),
+    ("sostanze pericolose ()", "sostanze pericolose (VRI-5)", "riferimento vuoto «()»"),
+    ("a rischio specifico ()", "a rischio specifico (VRI-6)", "riferimento vuoto «()»"),
+    ("Descrizione e rischio specifico ()", "Descrizione e rischio specifico (VRI-6)", "riferimento vuoto «()»"),
+    ("stoccate nell'area ()", "stoccate nell'area (VRI-5)", "riferimento vuoto «()»"),
+    ("organico dichiarato ()", "organico dichiarato (VRI-4.2)", "riferimento vuoto «()»"),
+    ("impianto/attrezzatura ()", "impianto/attrezzatura (registro dei controlli)", "riferimento vuoto «()»"),
+]
+
+
 def _gsa_livello(caso) -> str:
     st = caso.esito.get("strategia", {})
     if st.get("modo") == "codice":
@@ -137,7 +154,8 @@ def compila(caso, out, tieni_guide=False):
         for j in range(len(t.rows) - 1, len(locali) - 1, -1):
             if K.has_pending(t.rows[j].cells[0]) and j >= len(locali):
                 K.delete_row(t, j)
-    b.finalize_pe = True
+    b.nome_doc = "Piano di Emergenza"
+    b.applica_correzioni(CORREZIONI_PE)
     pend = b.finalize()
     b.salva(out)
     return pend

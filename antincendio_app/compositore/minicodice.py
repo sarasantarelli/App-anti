@@ -42,6 +42,23 @@ def compila(caso, voci, risposte, out, tieni_guide=False):
             cs = K.uniq_cells(t.rows[i])
             K.tick(cs[2], "Soddisfatto")
             K.fill_tokens(cs[2], [f"{r['valore']} (soglia {r['soglia']})"])
+    # Correzione template: la VRI-2.3 dimostrava solo 5 requisiti; Allegato I richiede anche qf, sostanze, lavorazioni
+    for _, t in K.find_tables(b.doc, "Requisito (Allegato I, p.to 1, c.2)"):
+        extra = [("C.d", "Carico d'incendio: nessun materiale combustibile in quantità significative", "qf ≤ 900 MJ/m² (soglia indicativa)"),
+                 ("C.e", "Assenza di sostanze o miscele pericolose in quantità significative", "vedi VRI-5/VRI-6"),
+                 ("C.f", "Assenza di lavorazioni pericolose ai fini dell'incendio", "vedi VRI-4/VRI-6")]
+        base_row = len(t.rows) - 1
+        for k, (key, testo, soglia) in enumerate(extra, start=1):
+            K.clone_row(t, base_row + k - 1)
+            cs = K.uniq_cells(t.rows[base_row + k])
+            K.set_cell(cs[0], testo); K.set_cell(cs[1], soglia)
+            r_ = req[key]
+            K.choose(cs[2], "Soddisfatto"); K.set_cell(cs[2], f"☒ Soddisfatto — {r_['valore']}")
+        b.c.esito.setdefault("correzioni", []).append({"documento": "VRI Minicodice", "prima": "VRI-2.3 con 5 requisiti",
+            "dopo": "VRI-2.3 con 8 requisiti (aggiunti qf ≤ 900, sostanze, lavorazioni)", "motivo": "l'Allegato I al DM 3/9/2021 li richiede cumulativamente"})
+    for t in b.doc.tables:
+        if len(t.rows) == 1 and K.ctext(t.rows[0].cells[0]).startswith("TUTTI i requisiti Allegato I soddisfatti?"):
+            K.set_cell(t.rows[0].cells[0], "TUTTI i requisiti Allegato I soddisfatti? (≤ 1.000 m², ≤ 100 occupanti, quota tra -5 e +24 m, qf ≤ 900 MJ/m², nessuna sostanza e nessuna lavorazione pericolosa)")
     # VRI-4 ---------------------------------------------------------------------
     b.attivita(); b.locali(); b.affollamento(); b.sostanze(); b.qf_area()
     # VRI-6 aree rischio specifico

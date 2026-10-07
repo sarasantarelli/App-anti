@@ -20,6 +20,8 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(_app):
+    from ..agents import norme
+    norme.indicizza_async()
     def loop():
         while True:
             store.cleanup(); time.sleep(3600)
@@ -65,6 +67,49 @@ def get_schema():
 def norme_cerca(q: str, n: int = 5):
     from ..agents import norme
     return norme.cerca(q, min(n, 10))
+
+
+@app.get("/api/norme/elenco", dependencies=[Depends(auth)])
+def norme_elenco():
+    from ..agents import norme
+    return {"documenti": norme.elenco(), "stato": norme.stato()}
+
+
+@app.post("/api/norme/upload", dependencies=[Depends(auth)])
+async def norme_upload(files: list[UploadFile] = File(...)):
+    from ..agents import norme
+    try:
+        for f in files:
+            norme.aggiungi(f.filename or "norma.pdf", await f.read())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    norme.indicizza_async()
+    return {"documenti": norme.elenco(), "stato": norme.stato()}
+
+
+@app.delete("/api/norme/{nome}", dependencies=[Depends(auth)])
+def norme_del(nome: str):
+    from ..agents import norme
+    norme.rimuovi(nome)
+    return {"documenti": norme.elenco()}
+
+
+@app.get("/api/pratiche", dependencies=[Depends(auth)])
+def elenco():
+    return store.elenco()
+
+
+@app.delete("/api/pratiche/{pid}", dependencies=[Depends(auth)])
+def elimina(pid: str):
+    _pid(pid)
+    store.elimina(pid)
+    return {"ok": True}
+
+
+@app.get("/api/diagnostica", dependencies=[Depends(auth)])
+def diagnostica():
+    from ..ambiente import diagnostica as dg
+    return dg()
 
 
 @app.post("/api/pratiche", dependencies=[Depends(auth)])
