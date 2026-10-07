@@ -377,7 +377,15 @@ class Base:
                     for p in c.paragraphs:
                         fix(p)
 
+    def pulisci_vuoti(self):
+        for t in self.doc.tables:
+            for row in t.rows:
+                for c in K.uniq_cells(row):
+                    if K.ctext(c) == "[]":
+                        K.set_cell(c, "")
+
     def finalize(self):
+        self.pulisci_vuoti()
         self.correggi_refusi()
         self.header_footer()
         K.strip_guides(self.doc, keep=self.tieni_guide)

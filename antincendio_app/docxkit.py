@@ -15,7 +15,7 @@ BOX, TICK = "☐", "☒"
 PENDING_FILL = "FAE6C0"   # palette template: avvertenza -> campo da completare
 NC_FILL = "F2DEDE"
 OK_FILL = "DFF0D8"
-PLACEHOLDER = re.compile(r"\[(?!\d+\]|m²\]|MJ/m²\])[^\]]{0,160}\]|_{3,}")
+PLACEHOLDER = re.compile(r"\[(?!\d+\]|m²\]|MJ/m²\])[^\]]{1,160}\]|_{3,}")
 
 
 def blocks(doc):
