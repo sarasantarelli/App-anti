@@ -29,5 +29,6 @@ if not exist "C:\Program Files\LibreOffice\program\soffice.exe" (
 echo.
 call .venv\Scripts\python -m antincendio_app diagnostica
 echo.
-echo Installazione terminata. Avvia l'app con AVVIA.bat
+call CREA_COLLEGAMENTO.bat
+echo Installazione terminata. Avvia l'app dal collegamento sul Desktop (o con AVVIA.bat)
 pause
