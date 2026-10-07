@@ -7,7 +7,7 @@ from . import coordinatore as CO, schema
 from .agents import ingestion
 
 DATA_DIR = Path(os.environ.get("APP_DATA_DIR", Path(__file__).resolve().parents[1] / "data"))
-RETENTION_H = float(os.environ.get("RETENTION_HOURS", "72"))
+RETENTION_H = float(os.environ.get("RETENTION_HOURS", "0"))   # 0 = mai (uso locale); in pubblico imposta es. 72
 MAX_UPLOAD_MB = float(os.environ.get("MAX_UPLOAD_MB", "200"))
 
 
@@ -39,6 +39,8 @@ class Store:
         (self.path(pid) / "caso.json").write_text(json.dumps(caso.to_dict(), ensure_ascii=False, default=str), encoding="utf-8")
 
     def cleanup(self):
+        if RETENTION_H <= 0:
+            return
         lim = time.time() - RETENTION_H * 3600
         for d in self.base.iterdir():
             try:

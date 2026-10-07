@@ -71,11 +71,13 @@ def _xlsx(path: Path) -> str:
 
 
 def _video(path: Path, every_s: int = 3, max_frames: int = 40) -> str:
-    if not shutil.which("ffmpeg"):
+    from ..ambiente import trova_ffmpeg
+    ff = trova_ffmpeg()
+    if not ff:
         return ""
     texts, seen = [], set()
     with tempfile.TemporaryDirectory() as td:
-        subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(path), "-vf",
+        subprocess.run([ff, "-loglevel", "error", "-i", str(path), "-vf",
                         f"fps=1/{every_s},scale=1280:-1", "-frames:v", str(max_frames),
                         f"{td}/f_%03d.jpg"], check=False)
         for f in sorted(Path(td).glob("f_*.jpg")):

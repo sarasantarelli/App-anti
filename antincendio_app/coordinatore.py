@@ -68,13 +68,8 @@ def analizza(caso: Caso, risposte: dict | None = None) -> tuple[Caso, list, dict
 
 
 def _pdf(docx_path: Path, outdir: Path) -> Path | None:
-    try:
-        subprocess.run(["soffice", "--headless", "--convert-to", "pdf", "--outdir", str(outdir), str(docx_path)],
-                       check=True, capture_output=True, timeout=240)
-        p = outdir / (docx_path.stem + ".pdf")
-        return p if p.exists() else None
-    except Exception:
-        return None
+    from .ambiente import converti_pdf
+    return converti_pdf(docx_path, outdir)
 
 
 def genera(caso: Caso, voci, risposte, outdir: str | Path, pdf=True, tieni_guide=False) -> dict:
