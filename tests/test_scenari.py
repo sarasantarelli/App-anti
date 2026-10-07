@@ -60,3 +60,34 @@ def test_percorso_scelto_dai_dati_non_assunto(tmp_path):
     d = docx.Document(str(tmp_path / "e" / res["documenti"][0]["file"]))
     t = "\n".join(p.text for tb in d.tables for r in tb.rows for cl in r.cells for p in cl.paragraphs)
     assert "CONCLUSIONE PROVVISORIA" in t and "CONCLUSIONE: tutti i requisiti" not in t
+
+
+def test_confronto_versioni_e_config(tmp_path, monkeypatch):
+    from antincendio_app import manutenzione as M
+    assert M._vtuple("0.10.0") > M._vtuple("0.9.5") and M._vtuple("1.0") > M._vtuple("0.99.9")
+    monkeypatch.setattr(M, "versione_remota", lambda: "99.0.0")
+    assert M.controlla_aggiornamenti()["disponibile"] is True
+    monkeypatch.setattr(M, "versione_remota", lambda: "0.0.1")
+    assert M.controlla_aggiornamenti()["disponibile"] is False
+    monkeypatch.setattr(M, "CONFIG", tmp_path / "config.json")
+    M.salva_impostazioni({"auto_aggiorna": True, "altro": 1})
+    assert M.leggi_impostazioni() == {"auto_aggiorna": True}
+
+
+def test_aggiornamento_zip_preserva_dati_e_template(tmp_path, monkeypatch):
+    import zipfile
+    from antincendio_app import manutenzione as M
+    monkeypatch.setattr(M, "ROOT", tmp_path / "app")
+    (tmp_path / "app" / "templates").mkdir(parents=True); (tmp_path / "app" / "templates" / "t.docx").write_bytes(b"MIO")
+    (tmp_path / "app" / "data").mkdir(); (tmp_path / "app" / "data" / "x.json").write_text("dati")
+    z = tmp_path / "n.zip"
+    with zipfile.ZipFile(z, "w") as zf:
+        zf.writestr("App-anti/antincendio_app/__init__.py", '__version__ = "9.9.9"\n')
+        zf.writestr("App-anti/templates/t.docx", b"NUOVO")
+        zf.writestr("App-anti/data/x.json", "sovrascritto?")
+    r = M.applica_zip(z)
+    assert r["versione_nuova"] == "9.9.9" and r["template_nuovi_da_confrontare"] == ["t.docx"]
+    assert (tmp_path / "app" / "templates" / "t.docx").read_bytes() == b"MIO"
+    assert (tmp_path / "app" / "templates" / "_nuovi" / "t.docx").read_bytes() == b"NUOVO"
+    assert (tmp_path / "app" / "data" / "x.json").read_text() == "dati"
+    assert "9.9.9" in (tmp_path / "app" / "antincendio_app" / "__init__.py").read_text()

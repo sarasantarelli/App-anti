@@ -9,7 +9,10 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKUP_DIR = Path(os.environ.get("APP_BACKUP_DIR", ROOT / "backup"))
 KEEP = int(os.environ.get("BACKUP_KEEP", "14"))
 UPDATE_URL = os.environ.get("APP_UPDATE_URL", "https://github.com/sarasantarelli/App-anti/archive/refs/heads/claude/fire-safety-assessment-app-0c719q.zip")
-PROTETTI = {"data", "norme", "backup", ".venv", ".git", "templates", "__pycache__"}
+RAW_URL = os.environ.get("APP_VERSION_URL", "https://raw.githubusercontent.com/sarasantarelli/App-anti/claude/fire-safety-assessment-app-0c719q/antincendio_app/__init__.py")
+CONFIG = ROOT / "config.json"
+_agg = {"disponibile": False, "remota": None, "controllato": None, "errore": None}
+PROTETTI = {"config.json", "data", "norme", "backup", ".venv", ".git", "templates", "__pycache__"}
 
 
 def crea_backup() -> Path:
@@ -104,3 +107,60 @@ def scarica_e_applica() -> dict:
         except Exception as e:
             raise ValueError(f"download non riuscito ({e}). Se il repository è privato, scarica lo ZIP a mano e caricalo qui.")
         return applica_zip(f)
+
+
+def _vtuple(v: str):
+    try:
+        return tuple(int(x) for x in str(v).strip().split("."))
+    except Exception:
+        return (0,)
+
+
+def versione_remota() -> str | None:
+    import re
+    with urllib.request.urlopen(RAW_URL, timeout=15) as r:
+        m = re.search(r'__version__\s*=\s*"([^"]+)"', r.read().decode("utf-8", "ignore"))
+    return m.group(1) if m else None
+
+
+def controlla_aggiornamenti() -> dict:
+    try:
+        rem = versione_remota()
+        _agg.update(remota=rem, disponibile=bool(rem and _vtuple(rem) > _vtuple(__version__)), controllato=time.time(), errore=None)
+    except Exception as e:
+        _agg.update(controllato=time.time(), errore=str(e)[:120])
+    return dict(_agg)
+
+
+def stato_aggiornamento() -> dict:
+    return dict(_agg)
+
+
+def leggi_impostazioni() -> dict:
+    import json
+    try:
+        return json.loads(CONFIG.read_text(encoding="utf-8")) if CONFIG.exists() else {}
+    except Exception:
+        return {}
+
+
+def salva_impostazioni(nuove: dict) -> dict:
+    import json
+    c = leggi_impostazioni(); c.update({k: v for k, v in nuove.items() if k in ("auto_aggiorna",)})
+    CONFIG.write_text(json.dumps(c, ensure_ascii=False, indent=1), encoding="utf-8")
+    return c
+
+
+def avvia_controllo_aggiornamenti(riavvia):
+    """Controlla all'avvio e ogni 6 ore. Se «auto_aggiorna» è attivo applica l'aggiornamento (con backup) e chiede il riavvio."""
+    def loop():
+        time.sleep(20)
+        while True:
+            st = controlla_aggiornamenti()
+            if st["disponibile"] and leggi_impostazioni().get("auto_aggiorna"):
+                try:
+                    crea_backup(); scarica_e_applica(); riavvia()
+                except Exception as e:
+                    _agg["errore"] = str(e)[:120]
+            time.sleep(6 * 3600)
+    threading.Thread(target=loop, daemon=True).start()

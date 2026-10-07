@@ -28,6 +28,7 @@ async def lifespan(_app):
     threading.Thread(target=loop, daemon=True).start()
     from .. import manutenzione
     manutenzione.avvia_backup_periodici()
+    manutenzione.avvia_controllo_aggiornamenti(_riavvia)
     yield
 
 
@@ -215,7 +216,20 @@ def _riavvia():
 def sistema():
     from .. import manutenzione as M
     return {"versione": __version__, "dati": str(service.DATA_DIR), "backup_dir": str(M.BACKUP_DIR), "backup": M.elenco_backup(),
-            "supervisionato": os.environ.get("APP_SUPERVISED") == "1", "update_url": M.UPDATE_URL, "pratiche": len(store.elenco())}
+            "supervisionato": os.environ.get("APP_SUPERVISED") == "1", "update_url": M.UPDATE_URL, "pratiche": len(store.elenco()),
+            "aggiornamento": M.stato_aggiornamento(), "impostazioni": M.leggi_impostazioni()}
+
+
+@app.post("/api/sistema/controlla", dependencies=[Depends(auth)])
+def sistema_controlla():
+    from .. import manutenzione as M
+    return M.controlla_aggiornamenti()
+
+
+@app.put("/api/sistema/impostazioni", dependencies=[Depends(auth)])
+async def sistema_impostazioni(request: Request):
+    from .. import manutenzione as M
+    return M.salva_impostazioni(await request.json())
 
 
 @app.post("/api/sistema/backup", dependencies=[Depends(auth)])

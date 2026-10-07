@@ -58,6 +58,7 @@ a.dl.big{background:var(--red);color:#fff;border-color:var(--red)}
 <section id="recenti" class="card hide"><h2>Pratiche salvate su questo PC</h2><div id="rl"></div></section>
 <section id="diag" class="card hide"></section>
 <section id="sist" class="hide"></section>
+<div id="upban" class="warn hide" style="max-width:1100px;margin:10px auto;cursor:pointer"></div>
 <section id="work" class="hide">
  <nav class="tabs" id="tabs"></nav>
  <div id="t-esito"></div><div id="t-dati" class="hide"></div><div id="t-sopr" class="hide"></div><div id="t-azioni" class="hide"></div><div id="t-doc" class="hide"></div><div id="t-norme" class="hide"></div>
@@ -180,16 +181,22 @@ async function sistema(){['home','recenti','diag','work'].forEach(i=>$('#'+i).cl
  <div class="card"><h2>Salvataggio e backup</h2><p class="mut">Ogni modifica è salvata subito su disco. In più, un backup completo delle pratiche viene creato ogni giorno (ultimi 14) in <code>${esc(j.backup_dir)}</code>. Copia ogni tanto quella cartella su un disco esterno o su OneDrive.</p>
  <p><button class="p" id="bk">Crea backup ora</button> <input type="file" id="rst" accept=".zip" class="hide"><button class="s" id="rbt">Ripristina da un backup (.zip)</button></p>
  ${j.backup.length?`<table><tr><th>File</th><th>MB</th><th>Quando</th></tr>${j.backup.map(b=>`<tr><td><a href="/api/sistema/backup/${encodeURIComponent(b.file)}">${esc(b.file)}</a></td><td>${b.mb}</td><td>${new Date(b.quando*1000).toLocaleString('it-IT')}</td></tr>`).join('')}</table>`:'<span class="mut">Nessun backup ancora.</span>'}</div>
- <div class="card"><h2>Aggiornamento dell'app</h2><p class="mut">L'aggiornamento sostituisce solo il programma: <b>pratiche, norme caricate e template restano intatti</b> (i template nuovi, se diversi dai tuoi, vengono messi in <code>templates/_nuovi</code> per il confronto). Prima di aggiornare viene fatto un backup.</p>
+ <div class="card"><h2>Aggiornamento dell'app</h2>
+ <p>${j.aggiornamento.disponibile?`<b style="color:var(--red)">Disponibile la versione ${esc(j.aggiornamento.remota)}</b>`:`Sei aggiornato (versione ${esc(j.versione)}${j.aggiornamento.remota?', ultima '+esc(j.aggiornamento.remota):''}).`} ${j.aggiornamento.errore?'<span class="mut">controllo non riuscito: '+esc(j.aggiornamento.errore)+'</span>':''} <button class="s" id="chk">Controlla ora</button></p>
+ <p><label style="display:inline;font-size:14px;color:var(--ink)"><input type="checkbox" id="auto" ${j.impostazioni.auto_aggiorna?'checked':''}> Installa automaticamente gli aggiornamenti (consigliato lasciarlo spento durante la redazione di un documento da firmare)</label></p><p class="mut">L'aggiornamento sostituisce solo il programma: <b>pratiche, norme caricate e template restano intatti</b> (i template nuovi, se diversi dai tuoi, vengono messi in <code>templates/_nuovi</code> per il confronto). Prima di aggiornare viene fatto un backup.</p>
  <p><button class="p" id="upi">Aggiorna da internet</button> <input type="file" id="upz" accept=".zip" class="hide"><button class="s" id="upb">Aggiorna da file ZIP</button></p><div id="upr"></div>
  ${j.supervisionato?'<p class="mut">Dopo l\'aggiornamento l\'app si riavvia da sola.</p>':'<p class="warn">App avviata senza riavvio automatico: dopo l\'aggiornamento chiudila e riaprila (usa il collegamento «App-anti VRI»).</p>'}</div>`;
  $('#bk').onclick=async()=>{await api('/api/sistema/backup',{method:'POST'});sistema()};
+ $('#chk').onclick=async()=>{await api('/api/sistema/controlla',{method:'POST'});sistema()};
+ $('#auto').onchange=e=>api('/api/sistema/impostazioni',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({auto_aggiorna:e.target.checked})});
  $('#rbt').onclick=()=>$('#rst').click();$('#rst').onchange=async e=>{if(!confirm('Ripristinare le pratiche dal backup? Lo stato attuale viene prima salvato in un nuovo backup.'))return;const fd=new FormData();fd.append('file',e.target.files[0]);try{const r=await api('/api/sistema/ripristina',{method:'POST',body:fd});alert('Ripristinati '+r.file_ripristinati+' file');location.reload()}catch(x){alert(x.message)}};
  const agg=async fd=>{$('#upr').innerHTML='<div class="warn">Aggiornamento in corso…</div>';try{const r=await api('/api/sistema/aggiorna',{method:'POST',body:fd});$('#upr').innerHTML=`<div class="f"><b>Aggiornato</b> ${esc(r.versione_precedente)} → ${esc(r.versione_nuova||'?')} (${r.file_aggiornati} file). ${r.template_nuovi_da_confrontare.length?'Template nuovi da confrontare: '+esc(r.template_nuovi_da_confrontare.join(', '))+'. ':''}${r.riavvio_automatico?'Riavvio in corso: la pagina si ricarica da sola.':'Chiudi e riapri l\'app.'}</div>`;if(r.riavvio_automatico)setTimeout(()=>location.reload(),15000)}catch(x){$('#upr').innerHTML=`<div class="f critico">${esc(x.message)}</div>`}};
  $('#upi').onclick=()=>agg(new FormData());$('#upb').onclick=()=>$('#upz').click();$('#upz').onchange=e=>{const fd=new FormData();fd.append('file',e.target.files[0]);agg(fd)}}
 $('#sistbtn').onclick=sistema;
 async function apri(id){PID=id;location.hash=id;R=await api('/api/pratiche/'+id);await init()}
 async function eli(id){if(confirm('Eliminare definitivamente questa pratica e i suoi file?')){await api('/api/pratiche/'+id,{method:'DELETE'});home()}}
+async function banner(){try{const j=await api('/api/sistema');const a=j.aggiornamento;if(a&&a.disponibile){const b=$('#upban');b.classList.remove('hide');b.innerHTML=`<b>Aggiornamento disponibile: versione ${esc(a.remota)}</b> (hai la ${esc(j.versione)}). Clicca per installarlo: pratiche, norme e template restano intatti.`;b.onclick=sistema}}catch(e){}}
+banner();setInterval(banner,600000);
 home();
 if(PID){api('/api/pratiche/'+PID).then(j=>{R=j;init()}).catch(()=>{location.hash='';PID=''})}
 </script>
