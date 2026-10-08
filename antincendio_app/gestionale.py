@@ -49,7 +49,10 @@ def apri_finestra():
 
 
 def _py_server() -> list[str]:
-    return [sys.executable.replace("pythonw.exe", "python.exe"), "-m", "antincendio_app", "serve", "--no-browser", "--port", str(PORT)]
+    cmd = [sys.executable.replace("pythonw.exe", "python.exe"), "-m", "antincendio_app", "serve", "--no-browser", "--port", str(PORT)]
+    if os.environ.get("APP_HOST"):
+        cmd += ["--host", os.environ["APP_HOST"]]
+    return cmd
 
 
 def supervisore():

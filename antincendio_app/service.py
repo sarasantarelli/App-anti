@@ -153,7 +153,17 @@ def riepilogo(store: Store, pid: str) -> dict:
                          "esito": e.get("esito"), "nota": e.get("nota", ""), "azione": tec.get(v.id, {}).get("azione", ""),
                          "auto": bool(e.get("auto")), "manuale": v.id in tec and bool(tec[v.id].get("esito"))})
     st = caso.esito.get("strategia", {})
+    from .agents import norme as NM
+    riscontri, corpus_ok = [], bool(NM.file_corpus())
+    if corpus_ok:
+        termini = " ".join(list(caso.get("tipologia_attivita") or []) + [str(caso.get("attivita_descrizione") or "")[:200]] + list(caso.get("sostanze") or []))
+        try:
+            riscontri = NM.cerca("Allegato I attività soggette controlli prevenzione incendi " + termini, 4)
+        except Exception:
+            riscontri = []
     return {
+        "allegato_I": {"corpus": corpus_ok, "riscontri": riscontri,
+                       "screening": n["screening"], "fonte": n["fonte_assoggettamento"], "soggetta": n["soggetta_dpr151"]},
         "dati": {k: {"valore": d.valore, "fonte": d.fonte, "confermato": d.confermato} for k, d in caso.dati.items()},
         "evidenze": [{"file": e["file"], "tipo": e["tipo"], "caratteri": len(e.get("testo", "")), "nota": e.get("nota", "")} for e in caso.evidenze],
         "findings": [f.__dict__ for f in caso.findings],

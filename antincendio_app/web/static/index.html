@@ -51,7 +51,7 @@ a.dl.big{background:var(--red);color:#fff;border-color:var(--red)}
 <section id="home" class="card">
   <h2>1 · Carica la documentazione del cliente</h2>
   <p class="mut">DVR, planimetrie, certificati, registri, foto e video del sopralluogo (PDF, Word, Excel, immagini, video). L'elaborazione avviene sul server, <b>senza chiavi API né servizi esterni</b>. Puoi anche partire senza file e inserire i dati a mano.</p>
-  <div id="drop" class="drop">Trascina qui i file oppure clicca per sceglierli<br><small class="mut" id="fl"></small></div>
+  <div id="drop" class="drop">Trascina qui i file, clicca per sceglierli oppure <b>incolla uno screenshot (Ctrl+V)</b><br><small class="mut" id="fl"></small></div>
   <input id="fi" type="file" multiple class="hide">
   <p><button class="p" id="go">Avvia analisi</button></p>
 </section>
@@ -78,6 +78,10 @@ $('#go').onclick=async()=>{$('#go').disabled=true;$('#go').textContent='Analisi 
  try{const fd=new FormData();files.forEach(f=>fd.append('files',f));const j=await api('/api/pratiche',{method:'POST',body:fd});PID=j.id;location.hash=PID;R=j;await init()}
  catch(e){alert('Errore: '+e.message)}finally{$('#go').disabled=false;$('#go').textContent='Avvia analisi'}};
 $('#nuova').onclick=()=>{location.hash='';location.reload()};
+document.addEventListener('paste',async e=>{const it=[...(e.clipboardData?.items||[])].filter(x=>x.type.startsWith('image/'));if(!it.length)return;
+ const fl=it.map((x,i)=>{const f=x.getAsFile();return new File([f],'screenshot_'+Date.now()+'_'+i+'.png',{type:f.type})});
+ if($('#work').classList.contains('hide')){files=[...files,...fl];$('#fl').textContent=files.map(f=>f.name).join(', ')+'  (screenshot incollato)'}
+ else if(PID){const fd=new FormData();fl.forEach(f=>fd.append('files',f));try{$('#salv').textContent='Leggo lo screenshot…';setR(await api(`/api/pratiche/${PID}/file`,{method:'POST',body:fd}));saved()}catch(x){alert(x.message)}}});
 async function init(){SCHEMA=SCHEMA||await api('/api/schema');$('#home').classList.add('hide');$('#work').classList.remove('hide');$('#nuova').classList.remove('hide');draw()}
 function setR(j){R=j;head();if(tab==='esito')drawEsito();if(tab==='azioni')drawAzioni()}
 function head(){const s=R.sintesi,b=$('#stato');b.classList.remove('hide','b-ok','b-bozza');b.textContent=s.stato;b.classList.add(s.stato.startsWith('PRONTO')?'b-ok':'b-bozza')}
@@ -93,6 +97,11 @@ function drawEsito(){const s=R.sintesi,c=s.completezza||{percento:0,voci:0,rispo
  <p>${esc(s.ramo)}</p>
  <table><tr><th>Requisito (DM 3/9/2021 All. I)</th><th>Soglia</th><th>Dato</th><th></th></tr>${RQ.map(r=>`<tr><td>${esc(r.id)} · ${esc(r.testo)}</td><td>${esc(r.soglia)}</td><td>${esc(r.valore)}</td><td>${ico(r)}</td></tr>`).join('')}</table>
  <p class="mut" style="font-size:13px">✓ soddisfatto · ✗ non soddisfatto · ? dato mancante. Tutti ✓ e non soggetta → Minicodice; anche un solo ✗ → Codice integrale; attività soggetta → Raccordo con la pratica VVF. Con i ? la scelta è provvisoria: inserisci i dati nella scheda «Dati».</p></div>
+ <div class="card"><h2>Rientra tra le attività soggette ai controlli VVF (DPR 151/2011)?</h2>
+ <p style="font-size:16px"><b>${s.soggetta_dpr151?'SÌ — risulta soggetta':'NO — non risulta soggetta'}</b> <span class="mut">(${esc((R.allegato_I||{}).fonte||'')})</span></p>
+ ${((R.allegato_I||{}).screening||[]).length?`<table><tr><th>Voce</th><th>Attività</th><th>Soglia</th><th>Dato</th><th>Esito</th></tr>${R.allegato_I.screening.map(x=>`<tr><td>${esc(x.voce)}</td><td>${esc(x.descrizione)}</td><td>${esc(x.soglia)}</td><td>${esc(x.valore)}</td><td><b style="color:${x.esito==='SOPRA'?'var(--red)':'#2e7d32'}">${x.esito==='SOPRA'?'SOPRA soglia':'sotto soglia'}</b></td></tr>`).join('')}</table>`:'<p class="mut">Nessuna voce tra quelle controllate dallo screening risulta pertinente.</p>'}
+ ${(R.allegato_I||{}).corpus?`<h3>Riscontro nel testo normativo caricato</h3>${(R.allegato_I.riscontri||[]).map(x=>`<div class="f"><b>${esc(x.file)}</b> · p.${x.pagina}<br>${esc(x.testo)}…</div>`).join('')||'<span class="mut">Nessun passo pertinente trovato.</span>'}`:'<div class="warn">Lo screening copre solo le voci più comuni. Per un riscontro completo carica il testo del <b>DPR 151/2011 con l\'Allegato I</b> nella scheda «Norme e libri»: l\'app cercherà l\'attività nell\'elenco e ti mostrerà le voci pertinenti con la pagina.</div>'}
+ <p class="mut" style="font-size:13px">L'esito è una stima: se sei sicuro del contrario, forzalo nella scheda «Dati» (campo «Attività soggetta a controllo VVF»).</p></div>
  <div class="card"><h2>Esito dell'analisi</h2><div class="kpi">
  <div><b>${s.rischio_basso?'BASSO':'NON BASSO'}</b><span>classificazione (DM 2/9/2021)</span></div>
  <div><b>${esc(s.rvita)}</b><span>Rvita</span></div><div><b>${s.rbeni}</b><span>Rbeni</span></div>
