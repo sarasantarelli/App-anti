@@ -11,3 +11,4 @@ opencv-python-headless>=4.8
 rapidocr-onnxruntime>=1.2.3
 imageio-ffmpeg>=0.4.9
 docx2pdf>=0.1.8; platform_system == "Windows" or platform_system == "Darwin"
+pywin32>=306; platform_system == "Windows"

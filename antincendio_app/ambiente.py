@@ -33,30 +33,69 @@ def trova_soffice() -> str | None:
     return None
 
 
+def word_installato() -> bool:
+    """Microsoft Word presente (Windows: registro/percorsi tipici; macOS: /Applications)."""
+    sysn = platform.system()
+    if sysn == "Windows":
+        try:
+            import winreg
+            for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+                try:
+                    winreg.CloseKey(winreg.OpenKey(hive, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\WINWORD.EXE"))
+                    return True
+                except OSError:
+                    continue
+        except Exception:
+            pass
+        if shutil.which("winword"):
+            return True
+        for base in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)")):
+            if base and any(Path(base).glob("Microsoft Office/root/Office*/WINWORD.EXE")):
+                return True
+        return False
+    if sysn == "Darwin":
+        return Path("/Applications/Microsoft Word.app").exists()
+    return False
+
+
 def word_disponibile() -> bool:
     try:
         import docx2pdf  # noqa: F401
     except Exception:
         return False
-    return platform.system() in ("Windows", "Darwin")
+    return word_installato()
+
+
+def _converti_con_word(docx_path: Path, target: Path, timeout=240) -> bool:
+    """PDF con Microsoft Word (docx2pdf). Esegue in un thread con timeout: se Word si blocca su una finestra non si ferma l'app."""
+    import threading
+    esito = {"ok": False}
+    def run():
+        try:
+            if platform.system() == "Windows":
+                import pythoncom
+                pythoncom.CoInitialize()
+            from docx2pdf import convert
+            convert(str(docx_path), str(target))
+            esito["ok"] = target.exists()
+        except Exception:
+            esito["ok"] = False
+    t = threading.Thread(target=run, daemon=True)
+    t.start(); t.join(timeout)
+    return esito["ok"]
 
 
 def converti_pdf(docx_path: Path, outdir: Path) -> Path | None:
+    """Preferenza: Microsoft Word (rende il documento come lo vedi tu); in alternativa LibreOffice se presente."""
     docx_path, outdir = Path(docx_path), Path(outdir)
     target = outdir / (docx_path.stem + ".pdf")
+    if word_disponibile() and _converti_con_word(docx_path, target):
+        return target
     so = trova_soffice()
     if so:
         try:
             subprocess.run([so, "--headless", "--convert-to", "pdf", "--outdir", str(outdir), str(docx_path)],
                            check=True, capture_output=True, timeout=300)
-            if target.exists():
-                return target
-        except Exception:
-            pass
-    if word_disponibile():
-        try:
-            from docx2pdf import convert
-            convert(str(docx_path), str(target))
             if target.exists():
                 return target
         except Exception:
@@ -81,6 +120,7 @@ def diagnostica() -> list[dict]:
     ff = trova_ffmpeg()
     r.append(ck("ffmpeg (video)", ff, ff or "non trovato", "pip install imageio-ffmpeg (incluso nell'installazione guidata)"))
     so = trova_soffice()
-    r.append(ck("PDF (LibreOffice)", so or word_disponibile(), so or ("Microsoft Word via docx2pdf" if word_disponibile() else "non disponibile: si ottengono solo i .docx"),
-                "installa LibreOffice (gratuito, libreoffice.org) per ottenere anche i PDF"))
+    w = word_disponibile()
+    r.append(ck("PDF (Microsoft Word)", w or so, ("Microsoft Word" if w else (f"LibreOffice: {so}" if so else "non disponibile: si ottengono solo i .docx")),
+                "serve Microsoft Word installato (oppure LibreOffice); senza, si ottengono solo i .docx"))
     return r

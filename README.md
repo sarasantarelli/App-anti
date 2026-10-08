@@ -3,7 +3,7 @@
 Genera **VRI** (Valutazione del Rischio Incendio, artt. 28 e 46 D.Lgs. 81/08) e **Piano di Emergenza** compilando i
 **template ufficiali** (`templates/`): stessi colori, font e struttura, **Word modificabile + PDF**, pronti per essere
 esibiti agli organi di vigilanza dopo sopralluogo e firma. **Nessuna chiave API**: lettura OCR, calcoli e redazione sono
-locali (RapidOCR/ONNX, ffmpeg, LibreOffice).
+locali (RapidOCR/ONNX, ffmpeg, Microsoft Word per i PDF).
 
 ```
 documenti, foto, video del cliente ──► LETTURA ─► ESTRAZIONE (dato + fonte) ─► CONTROLLO dati mancanti
@@ -48,7 +48,7 @@ dice quali dati servono per confermarla.
 
 ## Uso sul PC (Windows: nessuna competenza tecnica)
 1. Scarica/copia la cartella del progetto sul PC (es. `C:\App-anti`).
-2. **Doppio clic su `INSTALLA.bat`** (una volta: crea l'ambiente Python, installa i componenti, propone LibreOffice per i PDF).
+2. **Doppio clic su `INSTALLA.bat`** (una volta: crea l'ambiente Python, installa i componenti, controlla che ci sia Microsoft Word per i PDF).
 3. **Doppio clic su `AVVIA.bat`**: si apre il browser su http://localhost:8000. I dati restano nella cartella `data/` del PC; nulla esce dal computer.
 macOS/Linux: `./avvia.sh`. Controllo dell'installazione: `python -m antincendio_app diagnostica`.
 
@@ -62,7 +62,7 @@ se un libro contiene tabelle/regole da applicare, vanno trasferite nell'app (chi
 **Riga di comando:** `python -m antincendio_app genera ./cartella_cliente --dati dati.json --out ./out`
 **Audit dei template:** `python -m antincendio_app verifica-template` (vedi `docs/VERIFICA_TEMPLATE.md`)
 
-Installazione locale: Python 3.10+, `pip install -r requirements.txt`, e per i PDF **LibreOffice** + per i video **ffmpeg**.
+Installazione locale: Python 3.10+, `pip install -r requirements.txt`, per i PDF **Microsoft Word** (su Windows/macOS; in alternativa LibreOffice), per i video ffmpeg è incluso nei componenti.
 Su Windows la via più semplice è Docker Desktop: `docker compose up --build` (poi http://localhost:8000).
 
 ## Pubblicazione (accesso da fuori di questo PC)

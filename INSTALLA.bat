@@ -27,16 +27,10 @@ if errorlevel 1 ( echo Errore nell'installazione dei componenti. & if "%AUTO%"==
 if "%AUTO%"=="1" (
   powershell -NoProfile -ExecutionPolicy Bypass -Command "$d=[Environment]::GetFolderPath('MyDocuments')+'\App-anti-dati'; New-Item -ItemType Directory -Force $d | Out-Null; if(-not (Test-Path 'config.json')){ @{dati=$d+'\pratiche'; backup=$d+'\backup'; norme=$d+'\norme'} | ConvertTo-Json | Set-Content -Encoding UTF8 config.json }"
 )
-if not exist "C:\Program Files\LibreOffice\program\soffice.exe" (
-  if "%AUTO%"=="1" (
-    echo Installo LibreOffice per i PDF...
-    winget install -e --id TheDocumentFoundation.LibreOffice --silent --accept-package-agreements --accept-source-agreements
-  ) else (
-    echo.
-    echo LibreOffice non trovato: serve per ottenere anche i PDF (i Word funzionano comunque).
-    choice /m "Installare LibreOffice ora (gratuito)?"
-    if not errorlevel 2 winget install -e --id TheDocumentFoundation.LibreOffice --accept-package-agreements --accept-source-agreements
-  )
+reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\WINWORD.EXE" >nul 2>&1
+if errorlevel 1 (
+  echo.
+  echo ATTENZIONE: Microsoft Word non risulta installato: i PDF richiedono Word. I documenti .docx si generano comunque.
 )
 echo.
 call .venv\Scripts\python -m antincendio_app diagnostica

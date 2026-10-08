@@ -91,3 +91,16 @@ def test_aggiornamento_zip_preserva_dati_e_template(tmp_path, monkeypatch):
     assert (tmp_path / "app" / "templates" / "_nuovi" / "t.docx").read_bytes() == b"NUOVO"
     assert (tmp_path / "app" / "data" / "x.json").read_text() == "dati"
     assert "9.9.9" in (tmp_path / "app" / "antincendio_app" / "__init__.py").read_text()
+
+
+def test_pdf_preferisce_word_poi_libreoffice(tmp_path, monkeypatch):
+    from antincendio_app import ambiente as A
+    d = tmp_path / "x.docx"; d.write_bytes(b"x")
+    chiamate = []
+    monkeypatch.setattr(A, "word_disponibile", lambda: True)
+    monkeypatch.setattr(A, "_converti_con_word", lambda src, tgt, timeout=240: (chiamate.append("word"), tgt.write_bytes(b"%PDF"), True)[2])
+    monkeypatch.setattr(A, "trova_soffice", lambda: chiamate.append("lo") or None)
+    assert A.converti_pdf(d, tmp_path) == tmp_path / "x.pdf" and chiamate == ["word"]      # Word disponibile: LibreOffice non viene toccato
+    (tmp_path / "x.pdf").unlink(); chiamate.clear()
+    monkeypatch.setattr(A, "_converti_con_word", lambda src, tgt, timeout=240: (chiamate.append("word"), False)[1])
+    assert A.converti_pdf(d, tmp_path) is None and chiamate == ["word", "lo"]              # Word fallisce: prova LibreOffice
