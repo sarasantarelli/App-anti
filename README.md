@@ -46,6 +46,11 @@ dice quali dati servono per confermarla.
 - **Storico:** ogni emissione dei documenti resta archiviata con la sua revisione; «Nuova revisione» aggiorna il registro delle revisioni (art. 29 c.3 D.Lgs. 81/08); «Duplica pratica» per l'aggiornamento annuale.
 - **Aggiornamento:** scheda **Sistema → Aggiorna** (da internet o da file ZIP): sostituisce solo il programma, pratiche, norme e template restano intatti; l'app si riavvia da sola.
 
+## Senza installare nulla: GitHub Codespaces
+Apri https://codespaces.new/sarasantarelli/App-anti?ref=claude/fire-safety-assessment-app-0c719q → **Create codespace**. Dopo qualche minuto l'app si apre nel browser
+(porta 8000 **privata**: solo tu, con il tuo account GitHub). Limiti: i dati stanno nel cloud di GitHub (valuta la riservatezza dei clienti), il PDF si fa con
+LibreOffice (non Word), il codespace si sospende dopo inattività e ha un monte ore gratuito mensile. Per un uso quotidiano e riservato resta meglio l'installazione sul PC.
+
 ## Uso sul PC (Windows: nessuna competenza tecnica)
 1. Scarica/copia la cartella del progetto sul PC (es. `C:\App-anti`).
 2. **Doppio clic su `INSTALLA.bat`** (una volta: crea l'ambiente Python, installa i componenti, controlla che ci sia Microsoft Word per i PDF).

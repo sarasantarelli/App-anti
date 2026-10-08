@@ -1,0 +1,11 @@
+{
+  "name": "App-anti VRI",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends libreoffice-writer ffmpeg fonts-crosextra-carlito libgl1 libglib2.0-0 && pip install -r requirements.txt",
+  "postStartCommand": "nohup python -m antincendio_app serve --host 0.0.0.0 --no-browser --port 8000 > /tmp/app-anti.log 2>&1 &",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "App-anti VRI", "onAutoForward": "openBrowser", "visibility": "private" }
+  },
+  "hostRequirements": { "cpus": 2, "memory": "4gb" }
+}
